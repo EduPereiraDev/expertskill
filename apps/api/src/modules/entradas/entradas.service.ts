@@ -479,7 +479,7 @@ export class EntradasService {
     let melhorHorario = { inicio: 0, fim: 0, taxaAcerto: 0 };
     for (let i = 0; i < 24; i++) {
       const h = horarios[i];
-      if (h.total >= 3) {
+      if (h.total >= 1) {
         const taxa = (h.greens / h.total) * 100;
         if (taxa > melhorHorario.taxaAcerto) {
           melhorHorario = { inicio: i, fim: i + 2, taxaAcerto: taxa };
