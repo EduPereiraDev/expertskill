@@ -17,7 +17,7 @@ export default function Home() {
               <span className="text-purple-500">Expert</span> Skills
             </h1>
             <p className="mt-6 text-lg leading-8 text-gray-400">
-              Plataforma de análise automatizada e gestão de banca para apostadores de eSoccer FIFA na Bet365.
+              Plataforma de análise automatizada e gestão de banca para apostadores de eSoccer FIFA.
               <span className="block mt-2 text-purple-400">Você não precisa pensar, só seguir.</span>
             </p>
             <div className="mt-10 flex items-center justify-center gap-x-6">

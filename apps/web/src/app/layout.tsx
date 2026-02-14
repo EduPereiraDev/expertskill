@@ -6,7 +6,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'Expert Skills - Análise e Gestão para eSoccer',
-  description: 'Plataforma de análise automatizada e gestão de banca para apostadores de eSoccer FIFA na Bet365',
+  description: 'Plataforma de análise automatizada e gestão de banca para apostadores de eSoccer FIFA',
 };
 
 export default function RootLayout({
