@@ -379,7 +379,7 @@ export default function EntradasPage() {
                           <span className="text-xs text-zinc-500">
                             {entrada.partida 
                               ? `${formatTime(entrada.partida.dataHora)} • ${entrada.partida.liga.replace('_', ' ')}`
-                              : formatTime(entrada.createdAt)}
+                              : `${formatTime(entrada.createdAt)}${entrada.analiseIA?.match(/ - (.+)$/) ? ` • ${entrada.analiseIA.match(/ - (.+)$/)![1].replace('_', ' ')}` : ''}`}
                           </span>
                         </div>
                         <h3 className="text-lg font-semibold text-white">
