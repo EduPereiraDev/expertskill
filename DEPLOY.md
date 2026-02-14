@@ -1,7 +1,7 @@
 # ExpertSkill — Guia de Deploy Completo (Produção)
 
 > **Stack**: Next.js 14 (Vercel) + NestJS 10 (DigitalOcean) + PostgreSQL 16 + Redis 7
-> **Domínio**: Hostinger → expertskill.com.br
+> **Domínio**: Hostinger → expertskills.com.br
 > **Pagamentos**: Stripe (checkout + webhooks + portal)
 
 ---
@@ -32,7 +32,7 @@ Antes de começar, tenha em mãos:
 
 - [ ] Conta na **DigitalOcean** (https://cloud.digitalocean.com)
 - [ ] Conta na **Vercel** (https://vercel.com) — conectada ao GitHub
-- [ ] Conta na **Hostinger** com domínio `expertskill.com.br` ativo
+- [ ] Conta na **Hostinger** com domínio `expertskills.com.br` ativo
 - [ ] Conta na **Stripe** (https://dashboard.stripe.com)
 - [ ] Repositório no **GitHub** com o código do ExpertSkill
 - [ ] Chave SSH local gerada (`ssh-keygen -t ed25519`)
@@ -284,7 +284,7 @@ STRIPE_EXPERT_PRICE_ID="price_..."
 BETSAPI_TOKEN="SEU_TOKEN_BETSAPI"
 
 # URLs
-FRONTEND_URL="https://expertskill.com.br,https://www.expertskill.com.br"
+FRONTEND_URL="https://expertskills.com.br,https://www.expertskills.com.br"
 ```
 
 ### 6.4 Gerar JWT_SECRET
@@ -401,7 +401,7 @@ sudo nano /etc/nginx/sites-available/expertskill-api
 ```nginx
 server {
     listen 80;
-    server_name api.expertskill.com.br;
+    server_name api.expertskills.com.br;
 
     # Limite de tamanho do body (para uploads futuros)
     client_max_body_size 10M;
@@ -450,7 +450,7 @@ sudo systemctl reload nginx
 
 ## 9. Hostinger — Configurar DNS
 
-Acesse o **painel da Hostinger** → DNS Zone Editor para `expertskill.com.br`.
+Acesse o **painel da Hostinger** → DNS Zone Editor para `expertskills.com.br`.
 
 ### 9.1 Registros DNS necessários
 
@@ -461,8 +461,8 @@ Acesse o **painel da Hostinger** → DNS Zone Editor para `expertskill.com.br`.
 | **A** | `@` | `76.76.21.21` (Vercel) | 3600 |
 
 > **Explicação**:
-> - `api.expertskill.com.br` → aponta para o DigitalOcean (backend)
-> - `expertskill.com.br` e `www.expertskill.com.br` → apontam para a Vercel (frontend)
+> - `api.expertskills.com.br` → aponta para o DigitalOcean (backend)
+> - `expertskills.com.br` e `www.expertskills.com.br` → apontam para a Vercel (frontend)
 
 ### 9.2 Remover registros conflitantes
 
@@ -472,10 +472,10 @@ Se existirem registros A ou CNAME antigos para `@`, `www` ou `api`, **remova-os*
 
 ```bash
 # Testar propagação (do seu computador local)
-dig api.expertskill.com.br +short
+dig api.expertskills.com.br +short
 # Deve retornar o IP do droplet
 
-dig expertskill.com.br +short
+dig expertskills.com.br +short
 # Deve retornar 76.76.21.21
 ```
 
@@ -490,7 +490,7 @@ dig expertskill.com.br +short
 > ⚠️ **Só execute após o DNS estar propagado** (passo 9.3 funcionando).
 
 ```bash
-sudo certbot --nginx -d api.expertskill.com.br
+sudo certbot --nginx -d api.expertskills.com.br
 ```
 
 - Informe seu email
@@ -506,7 +506,7 @@ sudo certbot renew --dry-run
 ### 10.3 Verificar HTTPS
 
 ```bash
-curl -I https://api.expertskill.com.br/api/health
+curl -I https://api.expertskills.com.br/api/health
 # Deve retornar HTTP/2 200
 ```
 
@@ -534,9 +534,9 @@ Na Vercel, vá em **Settings → Environment Variables** e adicione:
 
 | Variável | Valor | Ambiente |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api.expertskill.com.br` | Production |
+| `NEXT_PUBLIC_API_URL` | `https://api.expertskills.com.br` | Production |
 
-> ⚠️ **Sem barra no final!** `https://api.expertskill.com.br` (não `https://api.expertskill.com.br/`)
+> ⚠️ **Sem barra no final!** `https://api.expertskills.com.br` (não `https://api.expertskills.com.br/`)
 
 ### 11.3 Deploy
 
@@ -545,14 +545,14 @@ Clique em **Deploy**. A Vercel fará o build automaticamente.
 ### 11.4 Configurar domínio customizado na Vercel
 
 1. Vá em **Settings → Domains**
-2. Adicione: `expertskill.com.br`
-3. Adicione: `www.expertskill.com.br`
+2. Adicione: `expertskills.com.br`
+3. Adicione: `www.expertskills.com.br`
 4. A Vercel vai verificar os registros DNS (configurados no passo 9)
 5. O SSL é automático na Vercel ✅
 
 ### 11.5 Verificar
 
-Acesse `https://expertskill.com.br` — deve carregar o frontend.
+Acesse `https://expertskills.com.br` — deve carregar o frontend.
 
 ---
 
@@ -596,7 +596,7 @@ Acesse `https://expertskill.com.br` — deve carregar o frontend.
 
 | Campo | Valor |
 |---|---|
-| **Endpoint URL** | `https://api.expertskill.com.br/api/pagamentos/webhook` |
+| **Endpoint URL** | `https://api.expertskills.com.br/api/pagamentos/webhook` |
 | **Events** | `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed` |
 
 3. Após criar, clique no webhook → **Signing Secret** → Reveal
@@ -610,7 +610,7 @@ Acesse `https://expertskill.com.br` — deve carregar o frontend.
    - [x] Customers can update payment methods
    - [x] Customers can cancel subscriptions
    - [x] Customers can view invoice history
-3. Em **Business information**, adicione o link: `https://expertskill.com.br`
+3. Em **Business information**, adicione o link: `https://expertskills.com.br`
 
 ### 12.6 Atualizar .env no servidor com as chaves Live
 
@@ -653,13 +653,13 @@ pm2 restart expertskill-api
 | `STRIPE_PRO_PRICE_ID` | `price_...` | ☐ |
 | `STRIPE_EXPERT_PRICE_ID` | `price_...` | ☐ |
 | `BETSAPI_TOKEN` | (seu token da BetsAPI) | ☐ |
-| `FRONTEND_URL` | `https://expertskill.com.br,https://www.expertskill.com.br` | ☐ |
+| `FRONTEND_URL` | `https://expertskills.com.br,https://www.expertskills.com.br` | ☐ |
 
 ### Frontend (Vercel Environment Variables)
 
 | Variável | Valor | Status |
 |---|---|---|
-| `NEXT_PUBLIC_API_URL` | `https://api.expertskill.com.br` | ☐ |
+| `NEXT_PUBLIC_API_URL` | `https://api.expertskills.com.br` | ☐ |
 
 ---
 
@@ -670,7 +670,7 @@ Execute cada teste na ordem. **Todos devem passar antes de considerar o deploy c
 ### 14.1 Health Check da API
 
 ```bash
-curl https://api.expertskill.com.br/api/health
+curl https://api.expertskills.com.br/api/health
 ```
 
 Resposta esperada:
@@ -687,21 +687,21 @@ Resposta esperada:
 ### 14.2 Health Check Liveness
 
 ```bash
-curl https://api.expertskill.com.br/api/health/live
+curl https://api.expertskills.com.br/api/health/live
 # Esperado: { "status": "ok" }
 ```
 
 ### 14.3 Health Check Readiness
 
 ```bash
-curl https://api.expertskill.com.br/api/health/ready
+curl https://api.expertskills.com.br/api/health/ready
 # Esperado: { "status": "ready" }
 ```
 
 ### 14.4 Testar registro de usuário
 
 ```bash
-curl -X POST https://api.expertskill.com.br/api/auth/register \
+curl -X POST https://api.expertskills.com.br/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"teste@teste.com","password":"123456","name":"Teste"}'
 ```
@@ -709,7 +709,7 @@ curl -X POST https://api.expertskill.com.br/api/auth/register \
 ### 14.5 Testar login
 
 ```bash
-curl -X POST https://api.expertskill.com.br/api/auth/login \
+curl -X POST https://api.expertskills.com.br/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"teste@teste.com","password":"123456"}'
 # Deve retornar accessToken e refreshToken
@@ -717,8 +717,8 @@ curl -X POST https://api.expertskill.com.br/api/auth/login \
 
 ### 14.6 Testar CORS (do frontend)
 
-Abra `https://expertskill.com.br` no navegador → Console → Network tab:
-- As requisições para `api.expertskill.com.br` devem funcionar sem erros de CORS
+Abra `https://expertskills.com.br` no navegador → Console → Network tab:
+- As requisições para `api.expertskills.com.br` devem funcionar sem erros de CORS
 
 ### 14.7 Testar Stripe Webhook
 
@@ -732,7 +732,7 @@ pm2 logs expertskill-api --lines 10
 
 ### 14.8 Testar fluxo completo de pagamento
 
-1. Acesse `https://expertskill.com.br`
+1. Acesse `https://expertskills.com.br`
 2. Faça login
 3. Vá em Planos → Assinar Pro
 4. Complete o checkout com cartão de teste Stripe: `4242 4242 4242 4242`
@@ -858,7 +858,7 @@ sudo certbot renew --dry-run
 ```
                     ┌─────────────────────┐
                     │   Hostinger DNS     │
-                    │  expertskill.com.br │
+                    │  expertskills.com.br │
                     └─────────┬───────────┘
                               │
               ┌───────────────┼───────────────┐
@@ -918,7 +918,7 @@ redis-cli ping                       # Deve retornar PONG
 Verifique no `.env` do servidor:
 ```bash
 grep FRONTEND_URL ~/expertskill/apps/api/.env
-# Deve conter: https://expertskill.com.br,https://www.expertskill.com.br
+# Deve conter: https://expertskills.com.br,https://www.expertskills.com.br
 ```
 
 ### Stripe webhook falhando
