@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { entradasApi, EntradaExpert, Entrada, EstatisticasHoje, ResultadoEntrada } from '@/lib/api';
+import { entradasApi, EntradaExpert, Entrada, EstatisticasHoje, ResultadoEntrada, bancaApi, Banca } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -43,6 +43,7 @@ export default function EntradasPage() {
   const [tab, setTab] = useState<'expert' | 'minhas'>('expert');
   
   // Modal de registro manual
+  const [banca, setBanca] = useState<Banca | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [novaEntrada, setNovaEntrada] = useState({
     data: new Date().toISOString().split('T')[0],
@@ -65,14 +66,16 @@ export default function EntradasPage() {
       setIsLoading(true);
       setError('');
       try {
-        const [expertRes, hojeRes, statsRes] = await Promise.all([
+        const [expertRes, hojeRes, statsRes, bancaRes] = await Promise.all([
           entradasApi.getExpert(),
           entradasApi.getHoje(),
           entradasApi.getEstatisticas(),
+          bancaApi.get().catch(() => ({ data: null })),
         ]);
         setEntradasExpert(expertRes.data);
         setEntradasHoje(hojeRes.data);
         setEstatisticas(statsRes.data);
+        setBanca(bancaRes.data);
       } catch (err: any) {
         setError(err.response?.data?.message || 'Erro ao carregar entradas');
       } finally {
@@ -245,7 +248,15 @@ export default function EntradasPage() {
             Minhas Entradas ({entradasHoje.length})
           </button>
         </div>
-        <Button onClick={() => setModalAberto(true)} className="bg-green-600 hover:bg-green-700">
+        <Button 
+          onClick={() => setModalAberto(true)} 
+          className={cn(
+            'bg-green-600 hover:bg-green-700',
+            !banca && 'opacity-50 cursor-not-allowed'
+          )}
+          disabled={!banca}
+          title={!banca ? 'Configure sua banca primeiro' : undefined}
+        >
           <Plus className="h-4 w-4 mr-1" />
           Nova Entrada
         </Button>
