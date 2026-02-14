@@ -620,7 +620,7 @@ export default function DashboardPage() {
       )}
 
       {/* Main Content */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Banca Setup */}
         {!banca && !isLoading && (
           <Card className="lg:col-span-2">
@@ -721,6 +721,50 @@ export default function DashboardPage() {
                   <Button variant="outline" className="w-full">
                     <ArrowRight className="h-4 w-4 mr-2" />
                     Ir para Entradas
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Análise Diária Preview */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-purple-400" />
+                  Análise Diária
+                </CardTitle>
+                <CardDescription>Confrontos analisados do dia</CardDescription>
+              </div>
+              {user?.plan === 'FREE' && (
+                <span className="text-xs px-2 py-1 rounded bg-zinc-800 text-zinc-400">
+                  PRO+
+                </span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {user?.plan === 'FREE' ? (
+              <div className="text-center py-8">
+                <p className="text-zinc-400 mb-4">
+                  Faça upgrade para acessar a Análise Diária
+                </p>
+                <Link href="/dashboard/planos">
+                  <Button variant="outline">Ver Planos</Button>
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-sm text-zinc-400 text-center py-4">
+                  Veja os confrontos analisados e rankings do dia
+                </p>
+                <Link href="/dashboard/analise">
+                  <Button variant="outline" className="w-full">
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                    Ir para Análise Diária
                   </Button>
                 </Link>
               </div>
