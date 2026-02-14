@@ -385,7 +385,9 @@ export default function EntradasPage() {
                         <h3 className="text-lg font-semibold text-white">
                           {entrada.partida 
                             ? `${entrada.partida.jogador1.nome} vs ${entrada.partida.jogador2.nome}`
-                            : entrada.mercado}
+                            : entrada.analiseIA?.match(/: (.+?) vs (.+?) -/)
+                              ? `${entrada.analiseIA.match(/: (.+?) vs (.+?) -/)![1]} vs ${entrada.analiseIA.match(/: (.+?) vs (.+?) -/)![2]}`
+                              : entrada.mercado}
                         </h3>
                         <div className="mt-2 flex flex-wrap gap-4 text-sm">
                           <span className="text-zinc-400 flex items-center gap-1">
