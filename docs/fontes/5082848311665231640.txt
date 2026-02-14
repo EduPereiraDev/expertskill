@@ -1,0 +1,10 @@
+Resumindo, é tipo assim, a ideia que eu acabei de ter, mano, é o seguinte, primeiro cenário de análise, padrão, esse é o cenário padrão, qual que seria o cenário padrão?
+É jogos ruins, tá ligado? A grade ruim, é um jogo pagando, outro não, tendo 0x0, 0x0 na HT, primeira análise, é 0x0 na HT, segunda, 0x0 na FT, ou então saindo gol muito rápido e não saindo mais um gol, tá ligado?
+Qual é a coisa que a gente pode estar usando também? Jogadores muito ouve segurando o jogo, segurando resultados, outra coisa que a gente pode estar usando também, pra identificar partidas ruins,
+jogadores bons não pagando ambas, ou então jogadores bons perdendo pra zebra, qual que a gente pode identificar agora também pra gente forrar também?
+Isso são evitando troia, agora, possivelmente, entradas que possam seguir, seria o seguinte, mano, é, a gente pegaria as últimas, as últimas, as últimas, as últimas 24 horas do dia, de confronto, tá ligado?
+Via qual que era os melhores confrontos do dia, não, na verdade, as últimas 12 horas, as últimas 28 horas, via qual que era os últimos 8, 12 horas do confronto do dia, que tava mais sendo gol, tá ligado?
+Botava aí o bot pra analisar, pode ser o bot mesmo, e o bot iria mandar pra gente que, tá, os confrontos estavam muito bons, tá ligado?
+Tipo, confronto Zohri e McShield, são os confrontos mais ouvidos do dia, aí, tipo assim, ela mandaria todos os confrontos que seria bom do dia, tá ligado?
+Tipo, num radar, outro radar, assim, se é outro radar, ou então pode ser até mesmo isso no radar, na aba radar, e colocaria o jogador, tal jogador Zohri tá matando 2.5 a 8 barra 9 partida, tá ligado?
+Tipo, esse jogador tá sendo o jogador mais vitorioso, tipo algo assim, entendeu, mano?

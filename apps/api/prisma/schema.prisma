@@ -1,0 +1,244 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  BASICO
+  PRO
+  EXPERT
+}
+
+enum TipoGestao {
+  AGRESSIVA
+  CONSERVADORA
+  PERSONALIZADA
+}
+
+enum Liga {
+  GT_12MIN
+  VOLTA_6MIN
+  H2H
+  GT_8MIN
+}
+
+enum StatusPartida {
+  AGENDADA
+  AO_VIVO
+  FINALIZADA
+  CANCELADA
+}
+
+enum Cenario {
+  JOGO_FRACO
+  OVER_SEGURANDO
+  MELHOR_JOGO
+}
+
+enum StatusEntrada {
+  PENDENTE
+  CONFIRMADA
+  FINALIZADA
+  CANCELADA
+}
+
+enum ResultadoEntrada {
+  GREEN
+  RED
+  REEMBOLSO
+}
+
+enum NivelConfianca {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
+enum StatusAssinatura {
+  ATIVA
+  CANCELADA
+  EXPIRADA
+  PENDENTE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  avatar        String?
+  role          Role      @default(USER)
+  plan          Plan      @default(FREE)
+  planExpiresAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bancas        Banca[]
+  entradas      Entrada[]
+  assinaturas   Assinatura[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Banca {
+  id         String     @id @default(cuid())
+  userId     String
+  nome       String     @default("Minha Banca")
+  valor      Float
+  metaDiaria Float
+  tipoGestao TipoGestao
+  divisor    Int?
+  stake      Float
+  ativa      Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entradas Entrada[]
+
+  @@index([userId, ativa])
+  @@map("bancas")
+}
+
+model Jogador {
+  id                String   @id @default(cuid())
+  nome              String
+  apelido           String?
+  liga              Liga
+  mediaGolsHT       Float    @default(0)
+  mediaGolsFT       Float    @default(0)
+  percentualOver    Float    @default(0)
+  percentual0x0     Float    @default(0)
+  ultimaAtualizacao DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  partidasComoJogador1 Partida[] @relation("Jogador1")
+  partidasComoJogador2 Partida[] @relation("Jogador2")
+
+  @@unique([nome, liga])
+  @@index([liga])
+  @@index([mediaGolsFT(sort: Desc)])
+  @@map("jogadores")
+}
+
+model Partida {
+  id         String        @id @default(cuid())
+  jogador1Id String
+  jogador2Id String
+  liga       Liga
+  dataHora   DateTime
+  golsHT1    Int?
+  golsHT2    Int?
+  golsFT1    Int?
+  golsFT2    Int?
+  status     StatusPartida @default(AGENDADA)
+  cenario    Cenario?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  jogador1 Jogador   @relation("Jogador1", fields: [jogador1Id], references: [id])
+  jogador2 Jogador   @relation("Jogador2", fields: [jogador2Id], references: [id])
+  entradas Entrada[]
+  oddsSnapshots OddsSnapshot[]
+
+  @@index([dataHora])
+  @@index([status])
+  @@index([liga])
+  @@index([jogador1Id, jogador2Id])
+  @@map("partidas")
+}
+
+model Entrada {
+  id         String           @id @default(cuid())
+  userId     String
+  bancaId    String
+  partidaId  String?
+  mercado    String
+  odd        Float
+  stake      Float
+  resultado  ResultadoEntrada?
+  lucro      Float?
+  status     StatusEntrada    @default(PENDENTE)
+  confianca  NivelConfianca
+  analiseIA  String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  banca   Banca    @relation(fields: [bancaId], references: [id], onDelete: Cascade)
+  partida Partida? @relation(fields: [partidaId], references: [id])
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([bancaId])
+  @@index([status])
+  @@map("entradas")
+}
+
+model Assinatura {
+  id                   String           @id @default(cuid())
+  userId               String
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  plano                Plan
+  status               StatusAssinatura
+  inicioEm             DateTime
+  fimEm                DateTime
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([stripeSubscriptionId])
+  @@map("assinaturas")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+model OddsSnapshot {
+  id           String   @id @default(cuid())
+  partidaId    String
+  minuto       Int
+  placarHome   Int
+  placarAway   Int
+  over05HT     Float?
+  over15HT     Float?
+  over25HT     Float?
+  over15FT     Float?
+  over25FT     Float?
+  over35FT     Float?
+  over45FT     Float?
+  linhaFechada String?
+  createdAt    DateTime @default(now())
+
+  partida Partida @relation(fields: [partidaId], references: [id], onDelete: Cascade)
+
+  @@index([partidaId, minuto])
+  @@index([createdAt])
+  @@map("odds_snapshots")
+}
