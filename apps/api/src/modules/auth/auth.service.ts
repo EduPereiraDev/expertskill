@@ -96,6 +96,14 @@ export class AuthService {
     return rest;
   }
 
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado');
+    }
+    return this.sanitizeUser(user);
+  }
+
   async updateProfile(userId: string, data: { name?: string; avatar?: string }) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) {
