@@ -97,9 +97,9 @@ export class Bet365SyncService implements OnModuleInit {
   }
 
   private async finalizarPartidasAntigas() {
-    // Partidas AO_VIVO com mais de 20 minutos desde o início devem ser finalizadas
-    // E-soccer tem partidas de 6-12 minutos, então 20 min é seguro
-    const vinteMinutosAtras = new Date(Date.now() - 20 * 60 * 1000);
+    // Partidas AO_VIVO com mais de 14 minutos desde o início devem ser finalizadas
+    // E-soccer tem partidas de 6-12 minutos, então 14 min é seguro
+    const vinteMinutosAtras = new Date(Date.now() - 14 * 60 * 1000);
     
     const result = await this.prisma.partida.updateMany({
       where: {
