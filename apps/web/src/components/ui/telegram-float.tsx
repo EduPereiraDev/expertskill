@@ -59,7 +59,7 @@ export function TelegramFloat() {
           'h-14 w-14 rounded-full shadow-lg shadow-purple-500/30 flex items-center justify-center transition-all duration-300 hover:scale-110',
           isOpen
             ? 'bg-zinc-700 rotate-0'
-            : 'bg-gradient-to-r from-purple-600 to-purple-500 animate-bounce-slow'
+            : 'bg-gradient-to-r from-purple-600 to-purple-500'
         )}
       >
         {isOpen ? (
