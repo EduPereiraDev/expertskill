@@ -3,6 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
+import * as nodemailer from 'nodemailer';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
@@ -119,6 +121,101 @@ export class AuthService {
     });
 
     return { message: 'Perfil atualizado com sucesso', user: this.sanitizeUser(updatedUser) };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user) {
+      // Não revelar se o email existe ou não
+      return { message: 'Se o email estiver cadastrado, você receberá um link de recuperação' };
+    }
+
+    // Invalidar tokens anteriores
+    await this.prisma.passwordReset.updateMany({
+      where: { userId: user.id, used: false },
+      data: { used: true },
+    });
+
+    // Gerar token
+    const token = crypto.randomBytes(32).toString('hex');
+    await this.prisma.passwordReset.create({
+      data: {
+        token,
+        userId: user.id,
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutos
+      },
+    });
+
+    // Enviar email
+    const frontendUrl = this.configService.get('FRONTEND_URL') || 'https://expertskills.app';
+    const resetLink = `${frontendUrl}/resetar-senha?token=${token}`;
+
+    try {
+      const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: this.configService.get('SMTP_USER') || 'experthebest@gmail.com',
+          pass: this.configService.get('SMTP_PASS'),
+        },
+      });
+
+      await transporter.sendMail({
+        from: '"Expert Skills" <experthebest@gmail.com>',
+        to: email,
+        subject: 'Recuperação de Senha - Expert Skills',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #0D0D0F; padding: 40px; border-radius: 12px;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h1 style="color: #fff; margin: 0;"><span style="color: #a855f7;">Expert</span> Skills</h1>
+            </div>
+            <div style="background: #1a1a1f; padding: 30px; border-radius: 8px; border: 1px solid #2a2a2f;">
+              <h2 style="color: #fff; margin-top: 0;">Recuperação de Senha</h2>
+              <p style="color: #a1a1aa;">Olá${user.name ? ` ${user.name}` : ''},</p>
+              <p style="color: #a1a1aa;">Recebemos uma solicitação para redefinir sua senha. Clique no botão abaixo para criar uma nova senha:</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetLink}" style="background: linear-gradient(to right, #9333ea, #a855f7); color: #fff; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Redefinir Senha</a>
+              </div>
+              <p style="color: #71717a; font-size: 14px;">Este link expira em 30 minutos.</p>
+              <p style="color: #71717a; font-size: 14px;">Se você não solicitou a recuperação de senha, ignore este email.</p>
+            </div>
+            <p style="color: #52525b; font-size: 12px; text-align: center; margin-top: 20px;">Expert Skills © ${new Date().getFullYear()}</p>
+          </div>
+        `,
+      });
+
+      this.logger.log(`Email de recuperação enviado para ${email}`);
+    } catch (err) {
+      this.logger.error('Erro ao enviar email de recuperação', err);
+      throw new BadRequestException('Erro ao enviar email. Tente novamente.');
+    }
+
+    return { message: 'Se o email estiver cadastrado, você receberá um link de recuperação' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const reset = await this.prisma.passwordReset.findUnique({ where: { token } });
+    if (!reset || reset.used || reset.expiresAt < new Date()) {
+      throw new BadRequestException('Link de recuperação inválido ou expirado');
+    }
+
+    if (newPassword.length < 6) {
+      throw new BadRequestException('A nova senha deve ter pelo menos 6 caracteres');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: reset.userId },
+        data: { password: hashedPassword },
+      }),
+      this.prisma.passwordReset.update({
+        where: { id: reset.id },
+        data: { used: true },
+      }),
+    ]);
+
+    return { message: 'Senha redefinida com sucesso' };
   }
 
   async updatePassword(userId: string, currentPassword: string, newPassword: string) {

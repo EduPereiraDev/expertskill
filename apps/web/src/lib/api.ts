@@ -79,6 +79,12 @@ export const authApi = {
 
   updatePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.put<{ message: string }>('/auth/password', data),
+
+  forgotPassword: (data: { email: string }) =>
+    api.post<{ message: string }>('/auth/forgot-password', data),
+
+  resetPassword: (data: { token: string; password: string }) =>
+    api.post<{ message: string }>('/auth/reset-password', data),
 };
 
 export interface Banca {

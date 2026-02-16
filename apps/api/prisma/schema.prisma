@@ -83,10 +83,11 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  bancas        Banca[]
-  entradas      Entrada[]
-  assinaturas   Assinatura[]
-  refreshTokens RefreshToken[]
+  bancas         Banca[]
+  entradas       Entrada[]
+  assinaturas    Assinatura[]
+  refreshTokens  RefreshToken[]
+  passwordResets PasswordReset[]
 
   @@map("users")
 }
@@ -218,6 +219,21 @@ model RefreshToken {
   @@index([userId])
   @@index([expiresAt])
   @@map("refresh_tokens")
+}
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_resets")
 }
 
 model OddsSnapshot {
