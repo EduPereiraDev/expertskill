@@ -269,7 +269,7 @@ export class AnaliseService {
       insights,
       monitoramentoOdds,
       estatisticas: {
-        totalPartidas: partidas.length,
+        totalPartidas: partidasFinalizadas.length,
         partidasOver25,
         partidasUnder25: partidasFinalizadas.length - partidasOver25,
         partidas0x0,
