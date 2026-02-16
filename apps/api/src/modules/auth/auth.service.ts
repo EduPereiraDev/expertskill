@@ -147,7 +147,8 @@ export class AuthService {
     });
 
     // Enviar email
-    const frontendUrl = this.configService.get('FRONTEND_URL') || 'https://expertskills.app';
+    const rawFrontendUrl = this.configService.get('FRONTEND_URL') || 'https://expertskills.com.br';
+    const frontendUrl = rawFrontendUrl.split(',')[0].trim();
     const resetLink = `${frontendUrl}/resetar-senha?token=${token}`;
 
     try {
