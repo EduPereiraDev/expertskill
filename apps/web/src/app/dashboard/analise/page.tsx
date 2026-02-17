@@ -182,14 +182,6 @@ const ligasFiltro = [
   { value: 'H2H', label: 'H2H' },
 ];
 
-const periodosFiltro = [
-  { value: 24, label: '24 horas' },
-  { value: 4, label: '4 horas' },
-  { value: 6, label: '6 horas' },
-  { value: 8, label: '8 horas' },
-  { value: 10, label: '10 horas' },
-  { value: 12, label: '12 horas' },
-];
 
 export default function AnalisePage() {
   const { user } = useAuthStore();
@@ -198,7 +190,6 @@ export default function AnalisePage() {
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
   const [ligaSelecionada, setLigaSelecionada] = useState('TODAS');
-  const [horasSelecionadas, setHorasSelecionadas] = useState(24);
   
   // Estado para análise ao vivo
   const [jogadores, setJogadores] = useState<JogadorSelecao[]>([]);
@@ -240,7 +231,7 @@ export default function AnalisePage() {
       fetchJogadores();
       fetchNicknames();
     }
-  }, [mounted, ligaSelecionada, horasSelecionadas]);
+  }, [mounted, ligaSelecionada]);
 
   // Atualização automática a cada 15 segundos
   useEffect(() => {
@@ -249,7 +240,7 @@ export default function AnalisePage() {
     const fetchData = async () => {
       try {
         const liga = ligaSelecionada !== 'TODAS' ? ligaSelecionada : undefined;
-        const { data } = await analiseApi.getDiaria(liga, horasSelecionadas);
+        const { data } = await analiseApi.getDiaria(liga);
         setAnalise(data);
       } catch (err) {
         // Silenciar erros de atualização automática
@@ -259,7 +250,7 @@ export default function AnalisePage() {
     const interval = setInterval(fetchData, 15000);
     
     return () => clearInterval(interval);
-  }, [mounted, ligaSelecionada, horasSelecionadas]);
+  }, [mounted, ligaSelecionada]);
 
   const fetchJogadores = async () => {
     try {
@@ -357,7 +348,7 @@ export default function AnalisePage() {
       setIsLoading(true);
       setError('');
       const liga = ligaSelecionada !== 'TODAS' ? ligaSelecionada : undefined;
-      const { data } = await analiseApi.getDiaria(liga, horasSelecionadas);
+      const { data } = await analiseApi.getDiaria(liga);
       setAnalise(data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao carregar análise');
@@ -471,24 +462,6 @@ export default function AnalisePage() {
           ))}
         </div>
 
-        {/* Filtros de Período */}
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-zinc-500 mr-1">Período:</span>
-          {periodosFiltro.map((periodo) => (
-            <button
-              key={periodo.value}
-              onClick={() => setHorasSelecionadas(periodo.value)}
-              className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
-                horasSelecionadas === periodo.value
-                  ? 'bg-green-600 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              )}
-            >
-              {periodo.label}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Estatísticas do Dia */}

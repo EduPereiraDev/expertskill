@@ -135,31 +135,26 @@ export class AnaliseService {
     private bet365Service: Bet365Service,
   ) {}
 
-  async getAnaliseDiaria(data?: Date, liga?: Liga, horas?: number): Promise<AnaliseDiaria> {
+  async getAnaliseDiaria(data?: Date, liga?: Liga, _horas?: number): Promise<AnaliseDiaria> {
     const dataAnalise = data || new Date();
     
-    let inicioDia: Date;
-    let fimDia: Date;
+    // Sempre usar o dia corrente em BRT (UTC-3)
+    // Criar início e fim do dia em horário de Brasília
+    const offsetBRT = 3 * 60 * 60 * 1000; // UTC-3
+    const agoraBRT = new Date(dataAnalise.getTime() - offsetBRT);
     
-    if (horas && horas > 0) {
-      // Filtrar pelas últimas X horas
-      fimDia = new Date();
-      inicioDia = new Date(fimDia.getTime() - (horas * 60 * 60 * 1000));
-    } else {
-      // Usar UTC para evitar problemas de timezone - dia inteiro
-      inicioDia = new Date(Date.UTC(
-        dataAnalise.getFullYear(),
-        dataAnalise.getMonth(),
-        dataAnalise.getDate(),
-        0, 0, 0, 0
-      ));
-      fimDia = new Date(Date.UTC(
-        dataAnalise.getFullYear(),
-        dataAnalise.getMonth(),
-        dataAnalise.getDate(),
-        23, 59, 59, 999
-      ));
-    }
+    const inicioDia = new Date(Date.UTC(
+      agoraBRT.getUTCFullYear(),
+      agoraBRT.getUTCMonth(),
+      agoraBRT.getUTCDate(),
+      3, 0, 0, 0 // 00:00 BRT = 03:00 UTC
+    ));
+    const fimDia = new Date(Date.UTC(
+      agoraBRT.getUTCFullYear(),
+      agoraBRT.getUTCMonth(),
+      agoraBRT.getUTCDate(),
+      26, 59, 59, 999 // 23:59 BRT = 02:59 UTC do dia seguinte
+    ));
 
     // Buscar todos os jogadores ativos (filtrado por liga se especificado)
     const jogadores = await this.prisma.jogador.findMany({
