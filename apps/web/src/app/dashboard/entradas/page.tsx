@@ -23,6 +23,16 @@ const ligasOptions = [
   { value: 'H2H', label: 'H2H' },
 ];
 
+const formatLiga = (liga: string) => {
+  const map: Record<string, string> = {
+    GT_12MIN: 'GT 12min',
+    VOLTA_6MIN: 'Volta 6min',
+    GT_8MIN: 'GT 8min',
+    H2H: 'H2H',
+  };
+  return map[liga] || liga.replace('_', ' ');
+};
+
 const mercadosOptions = [
   'Over 0.5 HT', 'Over 1.5 HT', 'Over 2.5 HT',
   'Over 1.5 FT', 'Over 2.5 FT', 'Over 3.5 FT', 'Over 4.5 FT',
@@ -302,7 +312,7 @@ export default function EntradasPage() {
                             {config.label}
                           </span>
                           <span className="text-xs text-zinc-500">
-                            {formatTime(entrada.partida.dataHora)} • {entrada.partida.liga.replace('_', ' ')}
+                            {formatTime(entrada.partida.dataHora)} • {formatLiga(entrada.partida.liga)}
                           </span>
                         </div>
                         <h3 className="text-lg font-semibold text-white">
@@ -378,8 +388,8 @@ export default function EntradasPage() {
                           )}
                           <span className="text-xs text-zinc-500">
                             {entrada.partida 
-                              ? `${formatTime(entrada.partida.dataHora)} • ${entrada.partida.liga.replace('_', ' ')}`
-                              : `${formatTime(entrada.createdAt)}${entrada.analiseIA?.match(/ - (.+)$/) ? ` • ${entrada.analiseIA.match(/ - (.+)$/)![1].replace('_', ' ')}` : ''}`}
+                              ? `${formatTime(entrada.partida.dataHora)} • ${formatLiga(entrada.partida.liga)}`
+                              : `${formatTime(entrada.createdAt)}${entrada.analiseIA?.match(/ - (.+)$/) ? ` • ${formatLiga(entrada.analiseIA.match(/ - (.+)$/)![1])}` : ''}`}
                           </span>
                         </div>
                         <h3 className="text-lg font-semibold text-white">
