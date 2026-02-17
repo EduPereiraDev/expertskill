@@ -38,7 +38,7 @@ const mercadosOptions = [
   'Over 1.5 FT', 'Over 2.5 FT', 'Over 3.5 FT', 'Over 4.5 FT',
   'Under 2.5 FT', 'Under 3.5 FT', 'Under 4.5 FT',
   'Ambas Marcam HT', 'Ambas Marcam FT',
-  'Resultado Final', 'Handicap',
+  'Resultado Final', 'Handicap', 'Dupla Hipótese',
 ];
 
 const valoresRapidos = [50, 100, 150, 200, 250, 300];
