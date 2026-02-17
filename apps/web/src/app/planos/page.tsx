@@ -187,9 +187,7 @@ export default function PlanosPublicPage() {
             </div>
           </div>
 
-          {/* Garantia */}
-          <div className="text-center mt-12">
-          </div>
+          
         </div>
       </div>
 

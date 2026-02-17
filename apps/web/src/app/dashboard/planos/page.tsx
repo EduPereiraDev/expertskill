@@ -300,10 +300,6 @@ export default function PlanosPage() {
           </Card>
         </div>
       </div>
-
-      {/* Garantia */}
-      <div className="text-center max-w-xl mx-auto py-8">
-      </div>
     </div>
   );
 }
