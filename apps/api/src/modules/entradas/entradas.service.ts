@@ -49,6 +49,7 @@ export interface UpdateEntradaDto {
   odd?: number;
   stake?: number;
   resultado?: ResultadoEntrada;
+  analiseIA?: string;
 }
 
 @Injectable()
@@ -404,6 +405,7 @@ export class EntradasService {
         ...(dto.mercado && { mercado: dto.mercado }),
         ...(dto.odd && { odd: dto.odd }),
         ...(dto.stake && { stake: dto.stake }),
+        ...(dto.analiseIA && { analiseIA: dto.analiseIA }),
         ...(dto.resultado && { resultado: dto.resultado, status: StatusEntrada.FINALIZADA }),
         lucro,
       },

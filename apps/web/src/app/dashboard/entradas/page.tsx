@@ -8,7 +8,7 @@ import { entradasApi, EntradaExpert, Entrada, EstatisticasHoje, ResultadoEntrada
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Zap, Lock, Check, Bot, FileText, Crown, CheckCircle, XCircle, BarChart3, Target, TrendingUp, Plus, Calendar, Clock, DollarSign, Percent } from 'lucide-react';
+import { Zap, Lock, Check, Bot, FileText, Crown, CheckCircle, XCircle, BarChart3, Target, TrendingUp, Plus, Calendar, Clock, DollarSign, Percent, Pencil, Trash2 } from 'lucide-react';
 
 const confiancaConfig = {
   ALTA: { label: 'Alta Confiança', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400' },
@@ -55,6 +55,16 @@ export default function EntradasPage() {
   // Modal de registro manual
   const [banca, setBanca] = useState<Banca | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
+  const [editandoEntrada, setEditandoEntrada] = useState<Entrada | null>(null);
+  const [editForm, setEditForm] = useState({
+    liga: 'GT_12MIN',
+    mercado: 'Over 2.5 FT',
+    jogador1: '',
+    jogador2: '',
+    odd: 1.80,
+    stake: 100,
+    status: 'PENDENTE' as 'PENDENTE' | 'GREEN' | 'RED' | 'MEIO_GREEN' | 'MEIO_RED' | 'REEMBOLSO',
+  });
   const [novaEntrada, setNovaEntrada] = useState({
     data: new Date().toISOString().split('T')[0],
     horario: new Date().toTimeString().slice(0, 5),
@@ -126,6 +136,89 @@ export default function EntradasPage() {
       setEstatisticas(statsRes.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao finalizar entrada');
+    }
+  };
+
+  const handleAbrirEdicao = (entrada: Entrada) => {
+    // Extrair jogadores e liga do analiseIA para entradas manuais
+    let jogador1 = '';
+    let jogador2 = '';
+    let liga = 'GT_12MIN';
+
+    if (entrada.partida) {
+      jogador1 = entrada.partida.jogador1?.nome || '';
+      jogador2 = entrada.partida.jogador2?.nome || '';
+      liga = entrada.partida.liga || 'GT_12MIN';
+    } else if (entrada.analiseIA) {
+      const matchJogadores = entrada.analiseIA.match(/: (.+?) vs (.+?) -/);
+      if (matchJogadores) {
+        jogador1 = matchJogadores[1];
+        jogador2 = matchJogadores[2];
+      }
+      const matchLiga = entrada.analiseIA.match(/ - (.+)$/);
+      if (matchLiga) {
+        liga = matchLiga[1];
+      }
+    }
+
+    setEditForm({
+      liga,
+      mercado: entrada.mercado,
+      jogador1,
+      jogador2,
+      odd: entrada.odd,
+      stake: entrada.stake,
+      status: entrada.resultado || 'PENDENTE',
+    });
+    setEditandoEntrada(entrada);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!editandoEntrada) return;
+    try {
+      const analiseIA = `Entrada manual: ${editForm.jogador1} vs ${editForm.jogador2} - ${editForm.liga}`;
+      
+      let resultado: ResultadoEntrada | undefined;
+      if (editForm.status === 'GREEN' || editForm.status === 'MEIO_GREEN') {
+        resultado = 'GREEN' as ResultadoEntrada;
+      } else if (editForm.status === 'RED' || editForm.status === 'MEIO_RED') {
+        resultado = 'RED' as ResultadoEntrada;
+      } else if (editForm.status === 'REEMBOLSO') {
+        resultado = 'REEMBOLSO' as ResultadoEntrada;
+      }
+
+      await entradasApi.atualizar(editandoEntrada.id, {
+        mercado: editForm.mercado,
+        odd: editForm.odd,
+        stake: editForm.stake,
+        analiseIA,
+        ...(resultado && { resultado }),
+      });
+
+      const [hojeRes, statsRes] = await Promise.all([
+        entradasApi.getHoje(),
+        entradasApi.getEstatisticas(),
+      ]);
+      setEntradasHoje(hojeRes.data);
+      setEstatisticas(statsRes.data);
+      setEditandoEntrada(null);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao salvar edição');
+    }
+  };
+
+  const handleDeletarEntrada = async (entradaId: string) => {
+    if (!confirm('Tem certeza que deseja excluir esta entrada?')) return;
+    try {
+      await entradasApi.deletar(entradaId);
+      const [hojeRes, statsRes] = await Promise.all([
+        entradasApi.getHoje(),
+        entradasApi.getEstatisticas(),
+      ]);
+      setEntradasHoje(hojeRes.data);
+      setEstatisticas(statsRes.data);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Erro ao excluir entrada');
     }
   };
 
@@ -421,24 +514,42 @@ export default function EntradasPage() {
                       </div>
 
                       {/* Ações */}
-                      {!isFinalizada && (
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline" 
-                            className="border-green-500/50 text-green-400 hover:bg-green-500/20"
-                            onClick={() => handleFinalizarEntrada(entrada.id, 'GREEN')}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-1" /> Green
-                          </Button>
-                          <Button 
-                            variant="outline"
-                            className="border-red-500/50 text-red-400 hover:bg-red-500/20"
-                            onClick={() => handleFinalizarEntrada(entrada.id, 'RED')}
-                          >
-                            <XCircle className="h-4 w-4 mr-1" /> Red
-                          </Button>
-                        </div>
-                      )}
+                      <div className="flex gap-2 flex-wrap">
+                        {!isFinalizada && (
+                          <>
+                            <Button 
+                              variant="outline" 
+                              className="border-green-500/50 text-green-400 hover:bg-green-500/20"
+                              onClick={() => handleFinalizarEntrada(entrada.id, 'GREEN')}
+                            >
+                              <CheckCircle className="h-4 w-4 mr-1" /> Green
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              className="border-red-500/50 text-red-400 hover:bg-red-500/20"
+                              onClick={() => handleFinalizarEntrada(entrada.id, 'RED')}
+                            >
+                              <XCircle className="h-4 w-4 mr-1" /> Red
+                            </Button>
+                          </>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-zinc-600 text-zinc-400 hover:bg-zinc-700"
+                          onClick={() => handleAbrirEdicao(entrada)}
+                        >
+                          <Pencil className="h-3.5 w-3.5 mr-1" /> Editar
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-red-500/30 text-red-400 hover:bg-red-500/20"
+                          onClick={() => handleDeletarEntrada(entrada.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -447,6 +558,141 @@ export default function EntradasPage() {
           )}
         </div>
       )}
+
+      {/* Modal de Edição */}
+      <Dialog open={!!editandoEntrada} onOpenChange={(open) => !open && setEditandoEntrada(null)}>
+        <DialogContent className="max-w-lg p-0 border-purple-500/20">
+          <DialogHeader className="p-5 border-b border-zinc-800 bg-gradient-to-r from-purple-500/10 to-transparent relative">
+            <DialogTitle className="text-lg font-semibold text-white flex items-center gap-2">
+              <Pencil className="h-5 w-5 text-purple-400" />
+              Editar Entrada
+            </DialogTitle>
+            <button
+              onClick={() => setEditandoEntrada(null)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white transition-colors"
+            >
+              <XCircle className="h-5 w-5" />
+            </button>
+          </DialogHeader>
+          
+          <div className="p-5 space-y-5">
+            <div>
+              <p className="text-xs text-purple-400 font-semibold mb-3 flex items-center gap-1">
+                <BarChart3 className="h-3 w-3" /> DETALHES DO JOGO
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Liga</label>
+                  <select
+                    value={editForm.liga}
+                    onChange={(e) => setEditForm({ ...editForm, liga: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  >
+                    {ligasOptions.map((liga) => (
+                      <option key={liga.value} value={liga.value}>{liga.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Mercado</label>
+                  <select
+                    value={editForm.mercado}
+                    onChange={(e) => setEditForm({ ...editForm, mercado: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  >
+                    {mercadosOptions.map((mercado) => (
+                      <option key={mercado} value={mercado}>{mercado}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Jogador 1</label>
+                  <input
+                    type="text"
+                    value={editForm.jogador1}
+                    onChange={(e) => setEditForm({ ...editForm, jogador1: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Jogador 2</label>
+                  <input
+                    type="text"
+                    value={editForm.jogador2}
+                    onChange={(e) => setEditForm({ ...editForm, jogador2: e.target.value })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-purple-400 font-semibold mb-3 flex items-center gap-1">
+                <DollarSign className="h-3 w-3" /> DETALHES DA APOSTA
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">Valor (R$)</label>
+                  <input
+                    type="number"
+                    value={editForm.stake}
+                    onChange={(e) => setEditForm({ ...editForm, stake: Number(e.target.value) })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-zinc-500 mb-1 block">ODD</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={editForm.odd}
+                    onChange={(e) => setEditForm({ ...editForm, odd: Number(e.target.value) })}
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2.5 text-sm text-white focus:border-purple-500 focus:outline-none transition-colors"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-purple-400 font-semibold mb-3 flex items-center gap-1">
+                <Target className="h-3 w-3" /> RESULTADO
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: 'PENDENTE', label: 'Andamento' },
+                  { value: 'GREEN', label: 'Green' },
+                  { value: 'RED', label: 'Red' },
+                  { value: 'MEIO_GREEN', label: 'Meio Green' },
+                  { value: 'MEIO_RED', label: 'Meio Red' },
+                  { value: 'REEMBOLSO', label: 'Reembolso' },
+                ].map((status) => (
+                  <button
+                    key={status.value}
+                    onClick={() => setEditForm({ ...editForm, status: status.value as any })}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-semibold transition-all',
+                      editForm.status === status.value
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                    )}
+                  >
+                    {status.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Button 
+              className="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 mt-2"
+              onClick={handleSalvarEdicao}
+            >
+              Salvar Alterações
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Modal de Registro de Nova Aposta */}
       <Dialog open={modalAberto} onOpenChange={setModalAberto}>

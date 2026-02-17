@@ -300,7 +300,7 @@ export const entradasApi = {
   deletar: (id: string) =>
     api.delete(`/entradas/${id}`),
   
-  atualizar: (id: string, data: { mercado?: string; odd?: number; stake?: number; resultado?: ResultadoEntrada }) =>
+  atualizar: (id: string, data: { mercado?: string; odd?: number; stake?: number; resultado?: ResultadoEntrada; analiseIA?: string }) =>
     api.patch<Entrada>(`/entradas/${id}`, data),
   
   getHistorico: (filtros?: { dataInicio?: string; dataFim?: string; resultado?: ResultadoEntrada }) => {
