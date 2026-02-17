@@ -19,7 +19,7 @@ const confiancaConfig = {
 const ligasOptions = [
   { value: 'GT_12MIN', label: 'GT 12min' },
   { value: 'VOLTA_6MIN', label: 'Volta 6min' },
-  { value: 'GT_8MIN', label: 'Battle 8min' },
+  { value: 'GT_8MIN', label: 'GT 8min' },
   { value: 'H2H', label: 'H2H' },
 ];
 

@@ -14,7 +14,7 @@ const ligas: { value: Liga | 'TODAS'; label: string }[] = [
   { value: 'TODAS', label: 'Todas' },
   { value: 'GT_12MIN', label: 'GT 12min' },
   { value: 'VOLTA_6MIN', label: 'Volta 6min' },
-  { value: 'GT_8MIN', label: 'Battle 8min' },
+  { value: 'GT_8MIN', label: 'GT 8min' },
   { value: 'H2H', label: 'H2H' },
 ];
 
@@ -80,7 +80,7 @@ export default function RadarPage() {
     const map: Record<Liga, string> = {
       GT_12MIN: 'GT 12min',
       VOLTA_6MIN: 'Volta 6min',
-      GT_8MIN: 'Battle 8min',
+      GT_8MIN: 'GT 8min',
       H2H: 'H2H',
     };
     return map[liga];
