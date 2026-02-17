@@ -105,6 +105,7 @@ export class PagamentosService {
         },
       ],
       mode: 'subscription',
+      allow_promotion_codes: true,
       success_url: dto.successUrl,
       cancel_url: dto.cancelUrl,
       metadata: {
