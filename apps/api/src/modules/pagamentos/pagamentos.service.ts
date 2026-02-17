@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -12,6 +12,7 @@ interface CreateCheckoutDto {
 
 @Injectable()
 export class PagamentosService {
+  private readonly logger = new Logger(PagamentosService.name);
   private stripe: Stripe;
 
   private readonly PLANOS: Record<string, { priceId: string; valor: number; nome: string }>;
@@ -131,19 +132,27 @@ export class PagamentosService {
       throw new BadRequestException(`Webhook Error: ${err.message || 'Assinatura inválida'}`);
     }
 
-    switch (event.type) {
-      case 'checkout.session.completed':
-        await this.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
-        break;
-      case 'customer.subscription.updated':
-        await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
-        break;
-      case 'customer.subscription.deleted':
-        await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-        break;
-      case 'invoice.payment_failed':
-        await this.handlePaymentFailed(event.data.object as Stripe.Invoice);
-        break;
+    this.logger.log(`Webhook recebido: ${event.type} (${event.id})`);
+
+    try {
+      switch (event.type) {
+        case 'checkout.session.completed':
+          await this.handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+          break;
+        case 'customer.subscription.updated':
+          await this.handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+          break;
+        case 'customer.subscription.deleted':
+          await this.handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          break;
+        case 'invoice.payment_failed':
+          await this.handlePaymentFailed(event.data.object as Stripe.Invoice);
+          break;
+      }
+    } catch (err: any) {
+      this.logger.error(`Erro ao processar webhook ${event.type}: ${err.message}`, err.stack);
+      // Retornar 200 para o Stripe não retentar indefinidamente
+      // O erro já foi logado para investigação
     }
 
     return { received: true };
@@ -182,11 +191,16 @@ export class PagamentosService {
   }
 
   private async handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+    this.logger.log(`Subscription updated: ${subscription.id} -> status: ${subscription.status}`);
+    
     const assinatura = await this.prisma.assinatura.findFirst({
       where: { stripeSubscriptionId: subscription.id },
     });
 
-    if (!assinatura) return;
+    if (!assinatura) {
+      this.logger.warn(`Assinatura ${subscription.id} não encontrada no banco - pode ser evento anterior ao checkout.session.completed`);
+      return;
+    }
 
     const status = this.mapStripeStatus(subscription.status);
     
