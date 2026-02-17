@@ -27,9 +27,8 @@ export class Bet365SyncService implements OnModuleInit {
     this.logger.log('Cron jobs ativos:');
     this.logger.log('  - A cada 30s: sync events + finalizar antigas + stats');
     this.logger.log('  - A cada 5min: sync HT scores faltantes');
-    this.logger.log('  - A cada hora: sync completo do dia');
-    this.logger.log('  - Diario 4h: sync dia anterior + HT + stats');
-    this.logger.log('  - Semanal dom 3h: backfill 7 dias de historico');
+    this.logger.log('Crons desabilitados (/events/ended requer plano superior):');
+    this.logger.log('  - Horario, Diario, Semanal (backfill/syncDay)');
 
     // Sync inicial ao iniciar
     this.initialSync().catch(err => this.logger.error('Initial sync failed', err));
