@@ -53,22 +53,10 @@ export class Bet365SyncService implements OnModuleInit {
 
     this.logger.log(`Banco possui ${totalPartidas} partidas finalizadas`);
 
-    if (totalPartidas < 100) {
-      // Banco vazio ou com poucos dados - fazer backfill agressivo
-      this.logger.log('Banco com poucos dados. Iniciando backfill de 14 dias...');
-      await this.backfillHistory(14);
-    } else if (totalPartidas < 500) {
-      // Banco com dados moderados - backfill leve
-      this.logger.log('Banco com dados moderados. Backfill de 3 dias...');
-      await this.backfillHistory(3);
-    } else {
-      // Banco com dados suficientes - apenas sync do dia
-      const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      await this.syncDayEvents(today);
-    }
+    // Backfill/syncDayEvents desabilitado - /events/ended requer plano superior da BetsAPI
+    // Stats são atualizadas com base nos jogos ao vivo sincronizados pelo cron de 30s
 
-    // 3. Atualizar HT faltantes e stats
-    await this.syncMissingHTScores();
+    // 3. Atualizar stats dos jogadores
     await this.updatePlayerStats();
 
     const totalFinal = await this.prisma.partida.count({
@@ -670,7 +658,7 @@ export class Bet365SyncService implements OnModuleInit {
    * Sync a cada hora - busca jogos finalizados das últimas horas
    * Garante que nenhum jogo seja perdido
    */
-  @Cron('0 * * * *') // A cada hora
+  // @Cron('0 * * * *') // Desabilitado - /events/ended requer plano superior da BetsAPI
   async handleHourlySync() {
     const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
     this.logger.log(`Sync horário: buscando jogos do dia ${today}...`);
@@ -681,7 +669,7 @@ export class Bet365SyncService implements OnModuleInit {
    * Cron job diário às 4h - sync completo do dia anterior
    * Garante dados completos mesmo se houve downtime
    */
-  @Cron('0 4 * * *')
+  // @Cron('0 4 * * *') // Desabilitado - /events/ended requer plano superior da BetsAPI
   async handleDailySync() {
     this.logger.log('Iniciando sync diario completo...');
     
@@ -706,7 +694,7 @@ export class Bet365SyncService implements OnModuleInit {
    * Cron semanal - domingo às 3h - backfill profundo de 7 dias
    * Garante que o banco acumule historico completo continuamente
    */
-  @Cron('0 3 * * 0')
+  // @Cron('0 3 * * 0') // Desabilitado - /events/ended requer plano superior da BetsAPI
   async handleWeeklyBackfill() {
     this.logger.log('Iniciando backfill semanal (7 dias)...');
     await this.backfillHistory(7);
