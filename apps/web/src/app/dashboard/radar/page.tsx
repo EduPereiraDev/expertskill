@@ -32,7 +32,7 @@ export default function RadarPage() {
   const [error, setError] = useState('');
   const [analiseAberta, setAnaliseAberta] = useState<AnaliseDetalhada | null>(null);
   const [loadingAnalise, setLoadingAnalise] = useState(false);
-  const [filtroH2H, setFiltroH2H] = useState(false);
+  const [filtroH2H, setFiltroH2H] = useState<'geral' | 'time' | 'jogador'>('geral');
   const [filtroDesempenho, setFiltroDesempenho] = useState<'todos' | 'time' | 'jogador'>('todos');
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
@@ -42,6 +42,7 @@ export default function RadarPage() {
     try {
       const { data } = await radarApi.getAnaliseDetalhada(partidaId);
       setAnaliseAberta(data);
+      setFiltroH2H('geral'); // Resetar filtro ao abrir nova analise
     } catch (err) {
       console.error('Erro ao carregar análise:', err);
     } finally {
@@ -389,24 +390,36 @@ export default function RadarPage() {
                       </span>
                     )}
                   </p>
-                  {/* Filtros gerais da analise */}
-                  <div className="flex gap-2 px-6 pb-3">
-                    <button
-                      onClick={() => setFiltroH2H(!filtroH2H)}
-                      className={cn(
-                        'px-3 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
-                        filtroH2H 
-                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' 
-                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
-                      )}
-                    >
-                      <Users className="h-3 w-3" />
-                      So confrontos
-                    </button>
+                  {/* Filtros de contexto da analise */}
+                  <div className="flex gap-1.5 px-6 pb-3">
+                    {([
+                      { key: 'geral' as const, label: 'Geral' },
+                      { key: 'time' as const, label: 'Por time' },
+                      { key: 'jogador' as const, label: 'So confrontos' },
+                    ]).map(({ key, label }) => (
+                      <button
+                        key={key}
+                        onClick={() => setFiltroH2H(key)}
+                        className={cn(
+                          'px-2.5 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1',
+                          filtroH2H === key
+                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
+                        )}
+                      >
+                        {key === 'jogador' && <Users className="h-3 w-3" />}
+                        {label}
+                      </button>
+                    ))}
                   </div>
+                  <p className="text-[10px] text-zinc-600 px-6 -mt-2 pb-2">
+                    {filtroH2H === 'geral' && 'Stats gerais — % de todas as partidas contra qualquer adversario'}
+                    {filtroH2H === 'time' && `Stats por time — % filtrada por partidas contra ${timeJ2} e ${timeJ1}`}
+                    {filtroH2H === 'jogador' && `So confrontos — % filtrada por partidas entre ${nomeJ1} e ${nomeJ2}`}
+                  </p>
                 </DialogHeader>
                 <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
-                  {filtroH2H && a.h2h.totalJogos === 0 && (
+                  {filtroH2H === 'jogador' && a.h2h.totalJogos === 0 && (
                     <p className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1.5 rounded">Sem confrontos diretos registrados entre esses jogadores.</p>
                   )}
 
@@ -1517,17 +1530,22 @@ export default function RadarPage() {
                   <div className="space-y-3">
                     <span className="text-sm text-zinc-400">Estatisticas dos Jogadores</span>
                   <div className="grid md:grid-cols-2 gap-3">
-                    {[{ stats: j1, nome: nomeJ1, outroNome: nomeJ2 }, { stats: j2, nome: nomeJ2, outroNome: nomeJ1 }].map(({ stats, nome, outroNome }, idx) => {
-                      const partidasFiltradas = filtroH2H 
+                    {[{ stats: j1, nome: nomeJ1, outroNome: nomeJ2, outroTime: timeJ2 }, { stats: j2, nome: nomeJ2, outroNome: nomeJ1, outroTime: timeJ1 }].map(({ stats, nome, outroNome, outroTime }, idx) => {
+                      const partidasFiltradas = filtroH2H === 'jogador'
                         ? stats.ultimasPartidas.filter((p: any) => {
                             const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
                             return adv.toLowerCase() === outroNome.toLowerCase();
                           })
+                        : filtroH2H === 'time'
+                        ? stats.ultimasPartidas.filter((p: any) => {
+                            const advTime = p.adversario.match(/^([^(]+)/)?.[1]?.trim() || p.adversario;
+                            return advTime.toLowerCase() === outroTime.toLowerCase();
+                          })
                         : stats.ultimasPartidas;
-                      // Recalcular stats com base nas partidas filtradas quando "So confrontos" ativo
+                      // Recalcular stats com base nas partidas filtradas quando filtro ativo
                       const pf = partidasFiltradas;
                       const pfCount = pf.length || 1;
-                      const calcStats = filtroH2H && pf.length > 0 ? {
+                      const calcStats = filtroH2H !== 'geral' && pf.length > 0 ? {
                         mediaGolsFT: pf.reduce((s: number, p: any) => s + p.golsPro, 0) / pfCount,
                         mediaGolsHT: pf.reduce((s: number, p: any) => s + p.golsHT, 0) / pfCount,
                         mediaGolsSofridos: pf.reduce((s: number, p: any) => s + p.golsContra, 0) / pfCount,
@@ -1559,7 +1577,7 @@ export default function RadarPage() {
                       return (
                       <div key={idx} className="p-3 bg-zinc-800/30 rounded border border-zinc-800">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-white text-sm">{nome} {filtroH2H && <span className="text-zinc-500 text-[10px] font-normal">vs {outroNome}</span>}</span>
+                          <span className="font-medium text-white text-sm">{nome} {filtroH2H !== 'geral' && <span className="text-zinc-500 text-[10px] font-normal">{filtroH2H === 'time' ? `c/ ${outroTime}` : `vs ${outroNome}`}</span>}</span>
                           <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
                             perfilOfensivo ? 'text-green-400' : 'text-zinc-400'
                           )}>
@@ -1576,7 +1594,7 @@ export default function RadarPage() {
                             </span>
                           </div>
                         </div>
-                        {filtroH2H && pf.length > 0 && (
+                        {filtroH2H !== 'geral' && pf.length > 0 && (
                           <p className="text-[10px] text-zinc-500 mt-1">
                             {s.mediaGolsFT >= 2 && s.mediaGolsSofridos >= 2
                               ? 'Ataca muito mas sofre bastante — jogo aberto, bom para Over e BTTS'
@@ -1637,7 +1655,7 @@ export default function RadarPage() {
                                 {d > 0 && <div className="bg-red-500 h-full" style={{ width: `${(d/pf.length)*100}%` }} />}
                               </div>
                               <p className="text-zinc-600 mt-0.5">{winRate}% win</p>
-                              {filtroH2H && (
+                              {filtroH2H !== 'geral' && (
                                 <p className="text-zinc-500 mt-0.5">
                                   {winRate >= 60 ? 'Fase boa — pode jogar mais confiante neste confronto'
                                     : winRate <= 30 ? 'Fase ruim — pode jogar retraido ou diferente do normal'
@@ -1662,7 +1680,7 @@ export default function RadarPage() {
                               <span className="text-zinc-500">{p.totalGols}g</span>
                             </div>
                           ))}
-                          {filtroH2H && partidasFiltradas.length === 0 && (
+                          {filtroH2H !== 'geral' && partidasFiltradas.length === 0 && (
                             <p className="text-[10px] text-zinc-600 text-center py-1">Sem confrontos</p>
                           )}
                         </div>
