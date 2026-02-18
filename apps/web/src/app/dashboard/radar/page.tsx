@@ -508,29 +508,41 @@ export default function RadarPage() {
                               </p>
                             </div>
                           )}
-                          {idaVolta && idaVolta.tipo === 'ambos' && (
+                          {idaVolta && idaVolta.tipo === 'ambos' && (() => {
+                            const mediaIdaVolta = (idaVolta.idaGols + idaVolta.voltaGols) / 2;
+                            const melhor = idaVolta.idaGols > idaVolta.voltaGols ? 'IDA' : idaVolta.voltaGols > idaVolta.idaGols ? 'VOLTA' : 'IGUAL';
+                            const operaVolta = idaVolta.voltaOver || mediaIdaVolta >= 2.5;
+                            return (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
                               <p className="text-[10px] text-zinc-600 mb-1">Ida vs Volta (ultimos 2 confrontos)</p>
                               <div className="grid grid-cols-2 gap-3 text-xs">
                                 <div className={cn('p-1.5 rounded text-center', idaVolta.idaOver ? 'bg-green-500/10' : 'bg-red-500/10')}>
-                                  <p className="text-zinc-500 text-[10px]">Ida</p>
+                                  <p className="text-zinc-500 text-[10px]">Ida {melhor === 'IDA' && <span className="text-green-400">MELHOR</span>}</p>
                                   <p className={cn('text-sm font-bold', idaVolta.idaOver ? 'text-green-400' : 'text-red-400')}>{idaVolta.idaGols} gols</p>
                                   <p className={cn('text-[10px]', idaVolta.idaOver ? 'text-green-500' : 'text-red-500')}>{idaVolta.idaOver ? 'OVER' : 'UNDER'}</p>
                                 </div>
                                 <div className={cn('p-1.5 rounded text-center', idaVolta.voltaOver ? 'bg-green-500/10' : 'bg-red-500/10')}>
-                                  <p className="text-zinc-500 text-[10px]">Volta</p>
+                                  <p className="text-zinc-500 text-[10px]">Volta {melhor === 'VOLTA' && <span className="text-green-400">MELHOR</span>}</p>
                                   <p className={cn('text-sm font-bold', idaVolta.voltaOver ? 'text-green-400' : 'text-red-400')}>{idaVolta.voltaGols} gols</p>
                                   <p className={cn('text-[10px]', idaVolta.voltaOver ? 'text-green-500' : 'text-red-500')}>{idaVolta.voltaOver ? 'OVER' : 'UNDER'}</p>
                                 </div>
                               </div>
-                              <p className="text-[10px] text-zinc-500 mt-1.5">
-                                {idaVolta.idaOver && idaVolta.voltaOver ? 'Ambos jogos foram Over. Padrao consistente.'
-                                  : !idaVolta.idaOver && !idaVolta.voltaOver ? 'Ambos jogos foram Under. Confronto tende a ser fechado.'
-                                  : 'Resultado variou entre ida e volta. Confronto imprevisivel.'}
-                              </p>
+                              <div className={cn('mt-2 p-1.5 rounded text-[10px] font-medium', operaVolta ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20')}>
+                                {operaVolta
+                                  ? idaVolta.idaOver && idaVolta.voltaOver
+                                    ? `OPERA — Ambos jogos Over. Ida ${idaVolta.idaGols}g, Volta ${idaVolta.voltaGols}g. Padrao consistente de gols.`
+                                    : melhor === 'VOLTA'
+                                    ? `OPERA COM CAUTELA — Volta (${idaVolta.voltaGols}g) foi melhor que Ida (${idaVolta.idaGols}g). Tendencia de melhora.`
+                                    : `OPERA COM CAUTELA — Media de ${mediaIdaVolta.toFixed(1)} gols nos confrontos. Ida foi melhor.`
+                                  : `EVITAR — ${!idaVolta.idaOver && !idaVolta.voltaOver ? 'Ambos jogos Under. Confronto fechado.' : `Volta teve apenas ${idaVolta.voltaGols} gols. Risco alto.`}`
+                                }
+                              </div>
                             </div>
-                          )}
-                          {idaVolta && idaVolta.tipo === 'somente_ida' && (
+                            );
+                          })()}
+                          {idaVolta && idaVolta.tipo === 'somente_ida' && (() => {
+                            const operaVolta = idaVolta.idaOver;
+                            return (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
                               <p className="text-[10px] text-zinc-600 mb-1">Jogo de IDA (1 confronto registrado)</p>
                               <div className="grid grid-cols-2 gap-3 text-xs">
@@ -545,15 +557,22 @@ export default function RadarPage() {
                                   <p className="text-[10px] text-zinc-600">Pendente</p>
                                 </div>
                               </div>
-                              <p className="text-[10px] text-zinc-500 mt-1.5">
-                                Este e o jogo de IDA. A volta ainda nao aconteceu.
-                              </p>
+                              <div className={cn('mt-2 p-1.5 rounded text-[10px] font-medium', operaVolta ? 'bg-green-500/10 text-green-400 border border-green-500/20' : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20')}>
+                                {operaVolta
+                                  ? `OPERA — Ida teve ${idaVolta.idaGols} gols (Over). Volta tende a ter mais gols quando ida foi movimentada.`
+                                  : `CAUTELA — Ida teve apenas ${idaVolta.idaGols} gols (Under). Volta pode compensar, mas sem garantia.`
+                                }
+                              </div>
                             </div>
-                          )}
+                            );
+                          })()}
                           {!idaVolta && h2hJogos.length === 0 && (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
                               <p className="text-[10px] text-zinc-600 mb-1">Ida vs Volta</p>
                               <p className="text-[10px] text-zinc-500">Primeiro confronto entre esses jogadores. Sem historico de ida/volta.</p>
+                              <div className="mt-1.5 p-1.5 rounded text-[10px] font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
+                                CAUTELA — Primeiro confronto. Sem dados de ida/volta para basear decisao.
+                              </div>
                             </div>
                           )}
                           {temTroia && (
@@ -1486,62 +1505,132 @@ export default function RadarPage() {
                             return adv.toLowerCase() === outroNome.toLowerCase();
                           })
                         : stats.ultimasPartidas;
+                      // Recalcular stats com base nas partidas filtradas quando "So confrontos" ativo
+                      const pf = partidasFiltradas;
+                      const pfCount = pf.length || 1;
+                      const calcStats = filtroH2H && pf.length > 0 ? {
+                        mediaGolsFT: pf.reduce((s: number, p: any) => s + p.golsPro, 0) / pfCount,
+                        mediaGolsHT: pf.reduce((s: number, p: any) => s + p.golsHT, 0) / pfCount,
+                        mediaGolsSofridos: pf.reduce((s: number, p: any) => s + p.golsContra, 0) / pfCount,
+                        percentualOver: (pf.filter((p: any) => p.totalGols > 2).length / pfCount) * 100,
+                        percentualOver05HT: (pf.filter((p: any) => (p.totalGolsHT || (p.golsHT + (p.golsHTContra || 0))) > 0).length / pfCount) * 100,
+                        percentualOver15HT: (pf.filter((p: any) => (p.totalGolsHT || (p.golsHT + (p.golsHTContra || 0))) > 1).length / pfCount) * 100,
+                        percentualBTTS: (pf.filter((p: any) => p.btts).length / pfCount) * 100,
+                        percentual0x0: (pf.filter((p: any) => p.totalGols === 0).length / pfCount) * 100,
+                        fazSofre: `${(pf.reduce((s: number, p: any) => s + p.golsPro, 0) / pfCount).toFixed(1)} / ${(pf.reduce((s: number, p: any) => s + p.golsContra, 0) / pfCount).toFixed(1)}`,
+                      } : {
+                        mediaGolsFT: stats.mediaGolsFT,
+                        mediaGolsHT: stats.mediaGolsHT,
+                        mediaGolsSofridos: stats.mediaGolsSofridos,
+                        percentualOver: stats.percentualOver,
+                        percentualOver05HT: stats.percentualOver05HT,
+                        percentualOver15HT: stats.percentualOver15HT,
+                        percentualBTTS: stats.percentualBTTS,
+                        percentual0x0: stats.percentual0x0,
+                        fazSofre: `${stats.mediaGolsFT.toFixed(1)} / ${stats.mediaGolsSofridos.toFixed(1)}`,
+                      };
+                      const s = calcStats;
+                      // Perfil tatico
+                      const perfilOfensivo = s.mediaGolsFT >= 2.5;
+                      const perfilVulneravel = s.mediaGolsSofridos >= 2;
+                      const perfil = perfilOfensivo && perfilVulneravel ? 'Ofensivo mas vulneravel'
+                        : perfilOfensivo ? 'Ofensivo'
+                        : perfilVulneravel ? 'Defensivo mas vulneravel'
+                        : 'Equilibrado';
                       return (
                       <div key={idx} className="p-3 bg-zinc-800/30 rounded border border-zinc-800">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-white text-sm">{nome} {filtroH2H && <span className="text-zinc-500 text-[10px] font-normal">vs {outroNome}</span>}</span>
                           <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
-                            stats.consistencia === 'ALTA' ? 'text-green-400' :
-                            stats.consistencia === 'BAIXA' ? 'text-red-400' : 'text-zinc-400'
+                            perfilOfensivo ? 'text-green-400' : 'text-zinc-400'
                           )}>
-                            {stats.consistencia === 'ALTA' ? 'Consistente' : stats.consistencia === 'BAIXA' ? 'Instável' : 'Regular'}
+                            {perfil}
                           </span>
                         </div>
                         <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
-                          <div><span className="text-zinc-500">Média gols:</span> <span className="text-white">{stats.mediaGolsFT.toFixed(1)}</span></div>
-                          <div><span className="text-zinc-500">Ambos marcam:</span> <span className="text-zinc-300">{stats.percentualBTTS.toFixed(0)}%</span></div>
-                          <div><span className="text-zinc-500">Sofre:</span> <span className="text-zinc-300">{stats.mediaGolsSofridos.toFixed(1)}/jogo</span></div>
+                          <div><span className="text-zinc-500">Media gols/jogo:</span> <span className="text-white">{s.mediaGolsFT.toFixed(1)}</span></div>
+                          <div className="col-span-2"><span className="text-zinc-500">Faz / Sofre:</span> <span className="text-zinc-300">{s.fazSofre}</span>
+                            <span className="text-zinc-600 text-[10px] ml-1">
+                              {s.mediaGolsFT > s.mediaGolsSofridos + 0.5 ? '— Ataca mais' 
+                                : s.mediaGolsSofridos > s.mediaGolsFT + 0.5 ? '— Sofre bastante'
+                                : '— Equilibrio entre ataque e defesa'}
+                            </span>
+                          </div>
                         </div>
+                        {filtroH2H && pf.length > 0 && (
+                          <p className="text-[10px] text-zinc-500 mt-1">
+                            {s.mediaGolsFT >= 2 && s.mediaGolsSofridos >= 2
+                              ? 'Ataca muito mas sofre bastante — jogo aberto, bom para Over e BTTS'
+                              : s.mediaGolsFT >= 2
+                              ? 'Jogos muito movimentados — forte indicativo de Over'
+                              : s.mediaGolsSofridos >= 2
+                              ? 'Sofre muitos gols nesse confronto — adversario domina'
+                              : 'Confronto equilibrado sem padrao claro'}
+                          </p>
+                        )}
                         <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
                           <div className="p-1.5 bg-zinc-900/40 rounded border border-zinc-800">
-                            <p className="text-zinc-600 text-[10px] mb-1">1º Tempo (HT)</p>
+                            <p className="text-zinc-600 text-[10px] mb-1">1o Tempo (HT)</p>
                             <div className="flex justify-between">
                               <span className="text-zinc-500">Gol no HT:</span>
-                              <span className={cn('font-medium', stats.percentualOver05HT >= 70 ? 'text-green-400' : stats.percentualOver05HT >= 50 ? 'text-yellow-400' : 'text-red-400')}>{stats.percentualOver05HT.toFixed(0)}%</span>
+                              <span className={cn('font-medium', s.percentualOver05HT >= 70 ? 'text-green-400' : s.percentualOver05HT >= 50 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver05HT.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-zinc-500">Over 1.5 HT:</span>
-                              <span className={cn('font-medium', stats.percentualOver15HT >= 50 ? 'text-green-400' : stats.percentualOver15HT >= 30 ? 'text-yellow-400' : 'text-red-400')}>{stats.percentualOver15HT.toFixed(0)}%</span>
+                              <span className={cn('font-medium', s.percentualOver15HT >= 50 ? 'text-green-400' : s.percentualOver15HT >= 30 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver15HT.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Média HT:</span>
-                              <span className="text-zinc-300">{stats.mediaGolsHT.toFixed(1)} gols</span>
+                              <span className="text-zinc-500">Media HT:</span>
+                              <span className="text-zinc-300">{s.mediaGolsHT.toFixed(1)} gols</span>
                             </div>
                           </div>
                           <div className="p-1.5 bg-zinc-900/40 rounded border border-zinc-800">
                             <p className="text-zinc-600 text-[10px] mb-1">Final (FT)</p>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Over 2.5 FT:</span>
-                              <span className={cn('font-medium', stats.percentualOver >= 70 ? 'text-green-400' : stats.percentualOver >= 50 ? 'text-yellow-400' : 'text-red-400')}>{stats.percentualOver.toFixed(0)}%</span>
+                              <span className="text-zinc-500">Over 2.5:</span>
+                              <span className={cn('font-medium', s.percentualOver >= 70 ? 'text-green-400' : s.percentualOver >= 50 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">0x0 FT:</span>
-                              <span className={cn('font-medium', stats.percentual0x0 <= 5 ? 'text-green-400' : stats.percentual0x0 <= 15 ? 'text-yellow-400' : 'text-red-400')}>{stats.percentual0x0.toFixed(0)}%</span>
+                              <span className="text-zinc-500">BTTS:</span>
+                              <span className={cn('font-medium', s.percentualBTTS >= 60 ? 'text-green-400' : s.percentualBTTS >= 40 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualBTTS.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Média FT:</span>
-                              <span className="text-zinc-300">{stats.mediaGolsFT.toFixed(1)} gols</span>
+                              <span className="text-zinc-500">Media FT:</span>
+                              <span className="text-zinc-300">{s.mediaGolsFT.toFixed(1)} gols</span>
                             </div>
                           </div>
                         </div>
-                        {(stats.streakOver > 0 || stats.streakUnder > 0) && (
-                          <p className={cn('text-[10px] mt-2', stats.streakOver > 0 ? 'text-green-400' : 'text-red-400')}>
-                            {stats.streakOver > 0 ? `${stats.streakOver} jogos seguidos com Over 2.5` : `${stats.streakUnder} jogos seguidos com Under 2.5`}
-                          </p>
-                        )}
+                        {/* ML recente */}
+                        {pf.length >= 3 && (() => {
+                          const v = pf.filter((p: any) => p.resultado === 'V').length;
+                          const e = pf.filter((p: any) => p.resultado === 'E').length;
+                          const d = pf.filter((p: any) => p.resultado === 'D').length;
+                          const winRate = Math.round((v / pf.length) * 100);
+                          return (
+                            <div className="mt-2 text-[10px]">
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500">ML recente ({pf.length}j):</span>
+                                <span className="text-zinc-300">{v}V / {e}E / {d}D</span>
+                              </div>
+                              <div className="mt-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
+                                {v > 0 && <div className="bg-green-500 h-full" style={{ width: `${(v/pf.length)*100}%` }} />}
+                                {e > 0 && <div className="bg-yellow-500 h-full" style={{ width: `${(e/pf.length)*100}%` }} />}
+                                {d > 0 && <div className="bg-red-500 h-full" style={{ width: `${(d/pf.length)*100}%` }} />}
+                              </div>
+                              <p className="text-zinc-600 mt-0.5">{winRate}% win</p>
+                              {filtroH2H && (
+                                <p className="text-zinc-500 mt-0.5">
+                                  {winRate >= 60 ? 'Fase boa — pode jogar mais confiante neste confronto'
+                                    : winRate <= 30 ? 'Fase ruim — pode jogar retraido ou diferente do normal'
+                                    : 'Fase irregular — resultados variam'}
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })()}
                         <div className="mt-2 pt-2 border-t border-zinc-800 space-y-0.5">
                           <div className="flex items-center justify-between text-[10px] text-zinc-600 px-1 mb-1">
-                            <span className="w-16">Últimos jogos</span>
+                            <span className="w-16">Ultimos jogos</span>
                             <span>HT</span>
                             <span>FT</span>
                             <span>Total</span>
