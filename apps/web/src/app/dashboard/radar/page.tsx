@@ -805,29 +805,62 @@ export default function RadarPage() {
                         )}
                       </div>
                     );
+                    // Stats gerais (todas as partidas de cada jogador)
+                    const statsGeral = calcStats([...j1.ultimasPartidas, ...j2.ultimasPartidas]);
+
                     return (
                       <div className="p-4 bg-zinc-800/40 rounded-lg border border-zinc-700">
                         <h3 className="text-sm font-semibold text-purple-400 mb-3 flex items-center gap-2">
                           <Users className="h-4 w-4" /> ANÁLISE DE CONFRONTO
                         </h3>
                         <div className="space-y-3">
-                          <div className="grid grid-cols-2 gap-3">
-                            <StatsCard title={`Por time: ${timeJ1} vs ${timeJ2}`} stats={statsTime} color="text-blue-400" />
-                            <StatsCard title={`Por jogador: ${nomeJ1} vs ${nomeJ2}`} stats={statsPlayer} color="text-purple-400" />
-                          </div>
-                          {statsTime && statsPlayer && (
-                            <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
-                              <p className="text-[10px] text-zinc-600 mb-1">Comparativo: Time vs Jogador</p>
-                              <p className="text-[10px] text-zinc-400">
-                                {statsTime.over25Pct > statsPlayer.over25Pct + 15
-                                  ? `Os times (${statsTime.over25Pct}%) fazem mais Over que os jogadores entre si (${statsPlayer.over25Pct}%). O time influencia mais.`
-                                  : statsPlayer.over25Pct > statsTime.over25Pct + 15
-                                  ? `Os jogadores (${statsPlayer.over25Pct}%) fazem mais Over que os times (${statsTime.over25Pct}%). O estilo do jogador pesa mais.`
-                                  : `Times (${statsTime.over25Pct}%) e jogadores (${statsPlayer.over25Pct}%) têm tendência similar. Confronto consistente.`}
-                              </p>
-                            </div>
+                          {/* GERAL: mostra ambos lado a lado */}
+                          {filtroH2H === 'geral' && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <StatsCard title={`Por time: ${timeJ1} vs ${timeJ2}`} stats={statsTime} color="text-blue-400" />
+                                <StatsCard title={`Por jogador: ${nomeJ1} vs ${nomeJ2}`} stats={statsPlayer} color="text-purple-400" />
+                              </div>
+                              {statsTime && statsPlayer && (
+                                <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
+                                  <p className="text-[10px] text-zinc-600 mb-1">Comparativo: Time vs Jogador</p>
+                                  <p className="text-[10px] text-zinc-400">
+                                    {statsTime.over25Pct > statsPlayer.over25Pct + 15
+                                      ? `Os times (${statsTime.over25Pct}%) fazem mais Over que os jogadores entre si (${statsPlayer.over25Pct}%). O time influencia mais.`
+                                      : statsPlayer.over25Pct > statsTime.over25Pct + 15
+                                      ? `Os jogadores (${statsPlayer.over25Pct}%) fazem mais Over que os times (${statsTime.over25Pct}%). O estilo do jogador pesa mais.`
+                                      : `Times (${statsTime.over25Pct}%) e jogadores (${statsPlayer.over25Pct}%) tem tendencia similar. Confronto consistente.`}
+                                  </p>
+                                </div>
+                              )}
+                            </>
                           )}
-                          {idaVolta && idaVolta.tipo === 'ambos' && (() => {
+
+                          {/* POR TIME: stats individuais de cada jogador (todas partidas) */}
+                          {filtroH2H === 'time' && (
+                            <>
+                              <div className="grid grid-cols-2 gap-3">
+                                <StatsCard title={`${j1.nome} (geral)`} stats={calcStats(j1.ultimasPartidas)} color="text-blue-400" />
+                                <StatsCard title={`${j2.nome} (geral)`} stats={calcStats(j2.ultimasPartidas)} color="text-blue-400" />
+                              </div>
+                              {statsTime && (
+                                <StatsCard title={`Quando ${timeJ1} enfrenta ${timeJ2} (qualquer jogador)`} stats={statsTime} color="text-cyan-400" />
+                              )}
+                              {!statsTime && (
+                                <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
+                                  <p className="text-xs text-zinc-500 text-center py-2">Sem partidas registradas entre os times {timeJ1} e {timeJ2}</p>
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {/* SO CONFRONTOS: stats diretos entre os jogadores */}
+                          {filtroH2H === 'jogador' && (
+                            <StatsCard title={`Confronto direto: ${nomeJ1} vs ${nomeJ2}`} stats={statsPlayer} color="text-purple-400" />
+                          )}
+
+                          {/* Ida/Volta — mostra em geral e so confrontos */}
+                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && idaVolta && idaVolta.tipo === 'ambos' && (() => {
                             const mediaIdaVolta = (idaVolta.idaGols + idaVolta.voltaGols) / 2;
                             const melhor = idaVolta.idaGols > idaVolta.voltaGols ? 'IDA' : idaVolta.voltaGols > idaVolta.idaGols ? 'VOLTA' : 'IGUAL';
                             const operaVolta = idaVolta.voltaOver || mediaIdaVolta >= 2.5;
@@ -859,7 +892,7 @@ export default function RadarPage() {
                             </div>
                             );
                           })()}
-                          {idaVolta && idaVolta.tipo === 'somente_ida' && (() => {
+                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && idaVolta && idaVolta.tipo === 'somente_ida' && (() => {
                             const operaVolta = idaVolta.idaOver;
                             return (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
@@ -885,7 +918,7 @@ export default function RadarPage() {
                             </div>
                             );
                           })()}
-                          {!idaVolta && todosConfrontos.length === 0 && (
+                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && !idaVolta && todosConfrontos.length === 0 && (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
                               <p className="text-[10px] text-zinc-600 mb-1">Ida vs Volta</p>
                               <p className="text-[10px] text-zinc-500">Primeiro confronto entre esses jogadores. Sem historico de ida/volta.</p>
@@ -894,7 +927,7 @@ export default function RadarPage() {
                               </div>
                             </div>
                           )}
-                          {temTroia && (
+                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && temTroia && (
                             <div className="p-2.5 bg-red-500/10 rounded border border-red-500/30">
                               <p className="text-xs text-red-400 font-semibold flex items-center gap-1.5">
                                 <AlertTriangle className="h-3.5 w-3.5" /> ALERTA TROIA
