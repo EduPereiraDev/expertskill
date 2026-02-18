@@ -8,7 +8,7 @@ import { radarApi, RadarPartida, Liga, AnaliseDetalhada } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap, Flame, ShieldAlert, Octagon } from 'lucide-react';
+import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap, Flame, ShieldAlert, Octagon, Search, X } from 'lucide-react';
 
 const ligas: { value: Liga | 'TODAS'; label: string }[] = [
   { value: 'TODAS', label: 'Todas' },
@@ -40,6 +40,9 @@ export default function RadarPage() {
   const [loadingAnalise, setLoadingAnalise] = useState(false);
   const [filtroH2H, setFiltroH2H] = useState<'geral' | 'time' | 'jogador'>('geral');
   const [filtroDesempenho, setFiltroDesempenho] = useState<'todos' | 'time' | 'jogador'>('todos');
+  const [buscaJogador, setBuscaJogador] = useState('');
+  const [resultadosBusca, setResultadosBusca] = useState<any[]>([]);
+  const [loadingBusca, setLoadingBusca] = useState(false);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
 
@@ -54,6 +57,17 @@ export default function RadarPage() {
     } finally {
       setLoadingAnalise(false);
     }
+  };
+
+  const handleBuscaJogador = async (nome: string) => {
+    setBuscaJogador(nome);
+    if (nome.length < 2) { setResultadosBusca([]); return; }
+    setLoadingBusca(true);
+    try {
+      const { data } = await radarApi.buscarJogador(nome);
+      setResultadosBusca(data);
+    } catch { setResultadosBusca([]); }
+    finally { setLoadingBusca(false); }
   };
 
   useEffect(() => {
@@ -168,6 +182,136 @@ export default function RadarPage() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Busca de Jogador */}
+      <div className="relative">
+        <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-700 rounded-lg px-3 py-2">
+          <Search className="h-4 w-4 text-zinc-500 flex-shrink-0" />
+          <input
+            type="text"
+            placeholder="Buscar jogador... (ex: Kril, Yerema, Fantazer)"
+            value={buscaJogador}
+            onChange={(e) => handleBuscaJogador(e.target.value)}
+            className="bg-transparent text-sm text-white placeholder-zinc-500 outline-none w-full"
+          />
+          {buscaJogador && (
+            <button onClick={() => { setBuscaJogador(''); setResultadosBusca([]); }}>
+              <X className="h-4 w-4 text-zinc-500 hover:text-white" />
+            </button>
+          )}
+        </div>
+
+        {/* Resultados da Busca */}
+        {(loadingBusca || resultadosBusca.length > 0) && (
+          <div className="mt-2 space-y-2">
+            {loadingBusca ? (
+              <div className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 text-center">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-purple-500 border-t-transparent mx-auto" />
+              </div>
+            ) : resultadosBusca.map((j) => {
+              const tendenciaConfig: Record<string, { label: string; color: string; bg: string }> = {
+                OVER_FORTE: { label: 'OVER FORTE', color: 'text-green-400', bg: 'bg-green-500/10' },
+                OVER: { label: 'OVER', color: 'text-green-400', bg: 'bg-green-500/10' },
+                NEUTRO: { label: 'NEUTRO', color: 'text-zinc-400', bg: 'bg-zinc-800' },
+                UNDER: { label: 'UNDER', color: 'text-red-400', bg: 'bg-red-500/10' },
+                UNDER_FORTE: { label: 'UNDER FORTE', color: 'text-red-400', bg: 'bg-red-500/10' },
+              };
+              const classConfig: Record<string, { label: string; color: string }> = {
+                AGRESSIVO: { label: 'Agressivo', color: 'text-red-400 border-red-500/30' },
+                EQUILIBRADO: { label: 'Equilibrado', color: 'text-yellow-400 border-yellow-500/30' },
+                CONTROLADOR: { label: 'Controlador', color: 'text-blue-400 border-blue-500/30' },
+              };
+              const t = tendenciaConfig[j.tendencia] || tendenciaConfig.NEUTRO;
+              const c = classConfig[j.classificacao] || classConfig.EQUILIBRADO;
+              return (
+                <div key={j.id} className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-white">{j.nome}</span>
+                      <span className={cn('text-[10px] px-1.5 py-0.5 rounded border font-medium', c.color)}>{c.label}</span>
+                    </div>
+                    <span className={cn('text-xs font-bold px-2 py-0.5 rounded', t.color, t.bg)}>{t.label}</span>
+                  </div>
+
+                  {/* Stats principais */}
+                  <div className="grid grid-cols-4 gap-2 mb-2">
+                    <div className="text-center p-1.5 bg-zinc-800/50 rounded">
+                      <p className="text-lg font-bold text-white">{j.mediaGolsFT.toFixed(1)}</p>
+                      <p className="text-[10px] text-zinc-500">Media FT</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-zinc-800/50 rounded">
+                      <p className="text-lg font-bold text-white">{j.mediaGolsHT.toFixed(1)}</p>
+                      <p className="text-[10px] text-zinc-500">Media HT</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-zinc-800/50 rounded">
+                      <p className={cn('text-lg font-bold', j.overPct >= 60 ? 'text-green-400' : j.overPct >= 40 ? 'text-yellow-400' : 'text-red-400')}>{j.overPct}%</p>
+                      <p className="text-[10px] text-zinc-500">Over 2.5</p>
+                    </div>
+                    <div className="text-center p-1.5 bg-zinc-800/50 rounded">
+                      <p className="text-lg font-bold text-zinc-300">{j.percentual0x0.toFixed(0)}%</p>
+                      <p className="text-[10px] text-zinc-500">0x0</p>
+                    </div>
+                  </div>
+
+                  {/* Barra Over vs Under */}
+                  <div className="mb-2">
+                    <div className="flex justify-between text-[10px] mb-0.5">
+                      <span className="text-green-400 font-medium">Over {j.overCount}/{j.totalJogos}</span>
+                      <span className="text-red-400 font-medium">Under {j.underCount}/{j.totalJogos}</span>
+                    </div>
+                    <div className="h-2.5 bg-red-500/30 rounded-full overflow-hidden">
+                      <div className="h-full bg-green-500 rounded-full" style={{ width: `${j.overPct}%` }} />
+                    </div>
+                  </div>
+
+                  {/* Detalhes extras */}
+                  <div className="grid grid-cols-3 gap-2 text-[11px]">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">BTTS:</span>
+                      <span className={cn('font-medium', j.percentualBTTS >= 60 ? 'text-green-400' : 'text-zinc-300')}>{j.percentualBTTS.toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Gol HT:</span>
+                      <span className={cn('font-medium', j.percentualOver05HT >= 70 ? 'text-green-400' : 'text-zinc-300')}>{j.percentualOver05HT.toFixed(0)}%</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Sofre:</span>
+                      <span className="text-zinc-300 font-medium">{j.mediaGolsSofridos.toFixed(1)}</span>
+                    </div>
+                  </div>
+
+                  {/* Sequencia */}
+                  <div className="flex items-center gap-1 mt-2">
+                    <span className="text-[10px] text-zinc-500 mr-1">Ultimos:</span>
+                    {j.sequencia.map((r: string, i: number) => (
+                      <span key={i} className={cn('h-5 w-5 rounded text-[10px] font-bold flex items-center justify-center',
+                        r === 'V' ? 'bg-green-500/20 text-green-400' : r === 'D' ? 'bg-red-500/20 text-red-400' : 'bg-zinc-700 text-zinc-400'
+                      )}>{r}</span>
+                    ))}
+                    {j.streakOver > 0 && <span className="text-[10px] text-green-400 ml-2">{j.streakOver} Over seguidos</span>}
+                    {j.streakUnder > 0 && <span className="text-[10px] text-red-400 ml-2">{j.streakUnder} Under seguidos</span>}
+                  </div>
+
+                  {/* Ultimas partidas */}
+                  <div className="mt-2 space-y-0.5">
+                    {j.ultimasPartidas.slice(0, 5).map((p: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-[10px] py-0.5 border-b border-zinc-800/50 last:border-0">
+                        <span className="text-zinc-500 truncate max-w-[120px]">vs {p.adversario}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-mono">{p.golsPro}-{p.golsContra}</span>
+                          <span className={cn('font-medium', p.totalGols > 2 ? 'text-green-400' : 'text-red-400')}>
+                            {p.totalGols > 2 ? 'Over' : 'Under'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Legenda */}

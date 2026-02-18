@@ -487,6 +487,73 @@ export class RadarService {
     };
   }
 
+  async buscarJogador(nome: string) {
+    // Buscar jogadores que contenham o nome (case insensitive)
+    const jogadores = await this.prisma.jogador.findMany({
+      where: {
+        nome: { contains: nome, mode: 'insensitive' },
+      },
+      take: 10,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    if (jogadores.length === 0) return [];
+
+    // Para cada jogador, buscar stats historicas
+    const resultados = await Promise.all(
+      jogadores.map(async (jogador) => {
+        const stats = await this.getJogadorStats(jogador, jogador.id, 'HISTORICO');
+        const totalJogos = stats.ultimasPartidas.length;
+        const overCount = stats.ultimasPartidas.filter(p => p.over25).length;
+        const underCount = totalJogos - overCount;
+        const overPct = totalJogos > 0 ? Math.round((overCount / totalJogos) * 100) : 0;
+        const underPct = 100 - overPct;
+
+        // Tendencia: ultimos 5 jogos
+        const ultimos5 = stats.ultimasPartidas.slice(0, 5);
+        const overRecente = ultimos5.filter(p => p.over25).length;
+        const tendencia = overRecente >= 4 ? 'OVER_FORTE'
+          : overRecente >= 3 ? 'OVER'
+          : overRecente <= 1 ? 'UNDER_FORTE'
+          : overRecente <= 2 ? 'UNDER'
+          : 'NEUTRO';
+
+        // Classificacao
+        const classificacao = stats.mediaGolsFT >= 3 ? 'AGRESSIVO'
+          : stats.mediaGolsFT >= 2 ? 'EQUILIBRADO'
+          : 'CONTROLADOR';
+
+        return {
+          id: jogador.id,
+          nome: jogador.nome,
+          nickname: this.extractNickname(jogador.nome) || jogador.nome,
+          mediaGolsFT: stats.mediaGolsFT,
+          mediaGolsHT: stats.mediaGolsHT,
+          mediaGolsSofridos: stats.mediaGolsSofridos,
+          percentualOver: stats.percentualOver,
+          percentual0x0: stats.percentual0x0,
+          percentualBTTS: stats.percentualBTTS,
+          percentualOver05HT: stats.percentualOver05HT,
+          percentualOver15HT: stats.percentualOver15HT,
+          streakOver: stats.streakOver,
+          streakUnder: stats.streakUnder,
+          consistencia: stats.consistencia,
+          sequencia: stats.sequencia,
+          totalJogos,
+          overCount,
+          underCount,
+          overPct,
+          underPct,
+          tendencia,
+          classificacao,
+          ultimasPartidas: stats.ultimasPartidas.slice(0, 10),
+        };
+      })
+    );
+
+    return resultados;
+  }
+
   private async getH2H(jogador1Id: string, jogador2Id: string, nome1: string, nome2: string) {
     // Buscar confrontos diretos entre os dois jogadores
     const confrontos = await this.prisma.partida.findMany({

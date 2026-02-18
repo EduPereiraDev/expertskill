@@ -220,6 +220,9 @@ export const radarApi = {
 
   getAnaliseDetalhada: (partidaId: string) =>
     api.get<AnaliseDetalhada>(`/radar/analise/${partidaId}`),
+
+  buscarJogador: (nome: string) =>
+    api.get<any[]>('/radar/jogador/busca', { params: { nome } }),
 };
 
 export type NivelConfianca = 'BAIXA' | 'MEDIA' | 'ALTA';

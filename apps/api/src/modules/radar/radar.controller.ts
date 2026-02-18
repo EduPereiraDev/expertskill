@@ -26,6 +26,12 @@ export class RadarController {
     return this.radarService.getPartidasAoVivo();
   }
 
+  @Get('jogador/busca')
+  buscarJogador(@Query('nome') nome: string) {
+    if (!nome || nome.length < 2) return [];
+    return this.radarService.buscarJogador(nome);
+  }
+
   @Get('analise/:id')
   getAnaliseDetalhada(@Param('id') partidaId: string) {
     return this.radarService.getAnaliseDetalhada(partidaId);
