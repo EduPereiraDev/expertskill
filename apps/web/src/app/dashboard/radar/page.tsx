@@ -420,12 +420,19 @@ export default function RadarPage() {
                     placaresH2Hx.forEach((pl: string) => { placarCount[pl] = (placarCount[pl] || 0) + 1; });
                     const placaresRepetidos = Object.entries(placarCount).filter(([_, c]) => c >= 2);
                     const temTroia = placaresRepetidos.length > 0;
-                    const idaVolta = h2hJogos.length >= 2 ? (() => {
-                      const ida = h2hJogos[h2hJogos.length - 1];
-                      const volta = h2hJogos[h2hJogos.length - 2];
-                      if (!ida || !volta) return null;
-                      return { idaGols: ida.totalGols, voltaGols: volta.totalGols, idaOver: ida.totalGols > 2, voltaOver: volta.totalGols > 2 };
-                    })() : null;
+                    const idaVolta = (() => {
+                      if (h2hJogos.length >= 2) {
+                        const ida = h2hJogos[h2hJogos.length - 1];
+                        const volta = h2hJogos[h2hJogos.length - 2];
+                        if (!ida || !volta) return null;
+                        return { idaGols: ida.totalGols, voltaGols: volta.totalGols, idaOver: ida.totalGols > 2, voltaOver: volta.totalGols > 2, fonte: 'h2h' as const };
+                      }
+                      // Fallback: usar última partida de cada jogador como referência
+                      const j1Last = j1.ultimasPartidas?.[0];
+                      const j2Last = j2.ultimasPartidas?.[0];
+                      if (!j1Last || !j2Last) return null;
+                      return { idaGols: j1Last.totalGols, voltaGols: j2Last.totalGols, idaOver: j1Last.totalGols > 2, voltaOver: j2Last.totalGols > 2, fonte: 'ultimas' as const };
+                    })();
                     const StatsCard = ({ title, stats, color }: { title: string; stats: any; color: string }) => (
                       <div className={cn('p-3 bg-zinc-900/40 rounded border', stats ? 'border-zinc-800' : 'border-zinc-800/50')}>
                         <p className={cn('text-[10px] font-medium mb-2', color)}>{title}</p>
@@ -488,15 +495,15 @@ export default function RadarPage() {
                           )}
                           {idaVolta && (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
-                              <p className="text-[10px] text-zinc-600 mb-1">Ida vs Volta (últimos 2 confrontos)</p>
+                              <p className="text-[10px] text-zinc-600 mb-1">{idaVolta.fonte === 'h2h' ? 'Ida vs Volta (ultimos 2 confrontos)' : `Ultima partida de cada jogador`}</p>
                               <div className="grid grid-cols-2 gap-3 text-xs">
                                 <div className={cn('p-1.5 rounded text-center', idaVolta.idaOver ? 'bg-green-500/10' : 'bg-red-500/10')}>
-                                  <p className="text-zinc-500 text-[10px]">Ida</p>
+                                  <p className="text-zinc-500 text-[10px]">{idaVolta.fonte === 'h2h' ? 'Ida' : nomeJ1}</p>
                                   <p className={cn('text-sm font-bold', idaVolta.idaOver ? 'text-green-400' : 'text-red-400')}>{idaVolta.idaGols} gols</p>
                                   <p className={cn('text-[10px]', idaVolta.idaOver ? 'text-green-500' : 'text-red-500')}>{idaVolta.idaOver ? 'OVER' : 'UNDER'}</p>
                                 </div>
                                 <div className={cn('p-1.5 rounded text-center', idaVolta.voltaOver ? 'bg-green-500/10' : 'bg-red-500/10')}>
-                                  <p className="text-zinc-500 text-[10px]">Volta</p>
+                                  <p className="text-zinc-500 text-[10px]">{idaVolta.fonte === 'h2h' ? 'Volta' : nomeJ2}</p>
                                   <p className={cn('text-sm font-bold', idaVolta.voltaOver ? 'text-green-400' : 'text-red-400')}>{idaVolta.voltaGols} gols</p>
                                   <p className={cn('text-[10px]', idaVolta.voltaOver ? 'text-green-500' : 'text-red-500')}>{idaVolta.voltaOver ? 'OVER' : 'UNDER'}</p>
                                 </div>
