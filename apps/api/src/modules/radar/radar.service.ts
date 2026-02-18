@@ -228,13 +228,13 @@ export class RadarService {
     overMedio: number,
     probOver: number
   ): 'OPERAR' | 'CAUTELA' | 'EVITAR' {
-    // OPERAR: Alta probabilidade de gols
-    if (mediaTotal >= 6 && overMedio >= 75 && probOver >= 70) {
+    // OPERAR: Bom perfil de gols (média combinada >= 3 e over >= 60%)
+    if (mediaTotal >= 3 && overMedio >= 60) {
       return 'OPERAR';
     }
     
-    // CAUTELA: Probabilidade média
-    if (mediaTotal >= 4 && overMedio >= 55 && probOver >= 50) {
+    // CAUTELA: Perfil moderado
+    if (mediaTotal >= 2 && overMedio >= 40) {
       return 'CAUTELA';
     }
     
