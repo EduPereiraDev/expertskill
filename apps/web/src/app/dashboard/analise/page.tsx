@@ -36,7 +36,7 @@ const formatLiga = (liga: string) => {
   const ligas: Record<string, string> = {
     GT_12MIN: 'GT 12min',
     VOLTA_6MIN: 'Volta 6min',
-    GT_8MIN: 'GT 8min',
+    GT_8MIN: 'Battle 8min',
     H2H: 'H2H',
   };
   return ligas[liga] || liga;
@@ -178,7 +178,7 @@ const ligasFiltro = [
   { value: 'TODAS', label: 'Todas as Ligas' },
   { value: 'GT_12MIN', label: 'GT 12min' },
   { value: 'VOLTA_6MIN', label: 'Volta 6min' },
-  { value: 'GT_8MIN', label: 'GT 8min' },
+  { value: 'GT_8MIN', label: 'Battle 8min' },
   { value: 'H2H', label: 'H2H' },
 ];
 
@@ -1022,7 +1022,7 @@ export default function AnalisePage() {
                   className="w-full h-8 px-2 text-sm rounded bg-zinc-800 border border-zinc-700 text-white focus:border-purple-500 focus:outline-none"
                 >
                   <option value="TODAS">Todas</option>
-                  <option value="GT_8MIN">GT 8min</option>
+                  <option value="GT_8MIN">Battle 8min</option>
                   <option value="GT_12MIN">GT 12min</option>
                   <option value="VOLTA_6MIN">Volta 6min</option>
                   <option value="H2H">H2H</option>
