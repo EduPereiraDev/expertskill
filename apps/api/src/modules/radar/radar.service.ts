@@ -2,6 +2,19 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Liga, StatusPartida, Cenario } from '@prisma/client';
 
+/**
+ * Contexto de analise:
+ * - DIARIO: Radar ao vivo, stats rapidas do dia (ultimos 10-15 jogos)
+ * - HISTORICO: Entradas expert, recomendacoes, classificacao (todo historico disponivel, 30-50 jogos)
+ *   Usado quando precisao e critica (decidir se opera ou nao)
+ */
+export type ContextoAnalise = 'DIARIO' | 'HISTORICO';
+
+const LIMITE_PARTIDAS: Record<ContextoAnalise, number> = {
+  DIARIO: 15,
+  HISTORICO: 50,
+};
+
 export interface RadarPartida {
   id: string;
   jogador1: { nome: string; mediaGolsFT: number; percentualOver: number; gols?: number };
@@ -250,11 +263,9 @@ export class RadarService {
 
     const radarPartida = this.mapPartidaToRadar(partida);
 
-    // Buscar histórico do jogador 1
-    const jogador1Stats = await this.getJogadorStats(partida.jogador1, partida.jogador1Id);
-    
-    // Buscar histórico do jogador 2
-    const jogador2Stats = await this.getJogadorStats(partida.jogador2, partida.jogador2Id);
+    // Analise detalhada usa contexto HISTORICO — precisao critica para recomendacoes
+    const jogador1Stats = await this.getJogadorStats(partida.jogador1, partida.jogador1Id, 'HISTORICO');
+    const jogador2Stats = await this.getJogadorStats(partida.jogador2, partida.jogador2Id, 'HISTORICO');
 
     // Buscar confrontos diretos (H2H)
     const h2h = await this.getH2H(partida.jogador1Id, partida.jogador2Id, partida.jogador1.nome, partida.jogador2.nome);
@@ -284,7 +295,7 @@ export class RadarService {
     return match ? match[1] : null;
   }
 
-  private async getJogadorStats(jogador: any, jogadorId: string): Promise<JogadorStatsDetalhado> {
+  private async getJogadorStats(jogador: any, jogadorId: string, contexto: ContextoAnalise = 'DIARIO'): Promise<JogadorStatsDetalhado> {
     // Extrair nickname do jogador: "PSG (Delpiero)" -> "Delpiero"
     const nickname = this.extractNickname(jogador.nome);
     
@@ -298,6 +309,7 @@ export class RadarService {
       jogadorIds = jogadoresComNickname.map(j => j.id);
     }
 
+    const limite = LIMITE_PARTIDAS[contexto];
     const partidas = await this.prisma.partida.findMany({
       where: {
         OR: [
@@ -308,7 +320,7 @@ export class RadarService {
       },
       include: { jogador1: true, jogador2: true },
       orderBy: { dataHora: 'desc' },
-      take: 15,
+      take: limite,
     });
 
     const ultimasPartidas: HistoricoPartida[] = partidas.map(p => {
@@ -388,13 +400,19 @@ export class RadarService {
     // Retornar nickname como nome principal
     const nomeJogador = nickname || jogador.nome;
 
+    // No contexto HISTORICO, calcular stats a partir das partidas buscadas (mais precisas)
+    // No contexto DIARIO, usar stats da tabela jogador (rapidas, pre-calculadas)
+    const over25Count = ultimasPartidas.filter(p => p.over25).length;
+    const zeroZeroCount = ultimasPartidas.filter(p => p.totalGols === 0).length;
+    const useCalculated = contexto === 'HISTORICO' && ultimasPartidas.length >= 5;
+
     return {
       nome: nomeJogador,
-      ultimasPartidas: ultimasPartidas.slice(0, 10),
-      mediaGolsHT: jogador.mediaGolsHT || totalGolsHT / count,
-      mediaGolsFT: jogador.mediaGolsFT || totalGolsFT / count,
-      percentualOver: jogador.percentualOver,
-      percentual0x0: jogador.percentual0x0,
+      ultimasPartidas: contexto === 'HISTORICO' ? ultimasPartidas.slice(0, 15) : ultimasPartidas.slice(0, 10),
+      mediaGolsHT: useCalculated ? totalGolsHT / count : (jogador.mediaGolsHT || totalGolsHT / count),
+      mediaGolsFT: useCalculated ? totalGolsFT / count : (jogador.mediaGolsFT || totalGolsFT / count),
+      percentualOver: useCalculated ? (over25Count / count) * 100 : jogador.percentualOver,
+      percentual0x0: useCalculated ? (zeroZeroCount / count) * 100 : jogador.percentual0x0,
       golsPorTempo: {
         ht: totalGolsHT / count,
         segundoTempo: (totalGolsFT - totalGolsHT) / count,

@@ -469,7 +469,7 @@ export class Bet365SyncService implements OnModuleInit {
             jogador2: true,
           },
           orderBy: { dataHora: 'desc' },
-          take: 20,
+          take: 50, // Stats persistidas usam historico completo para precisao
         });
         partidas.push(...playerPartidas.map(p => ({ ...p, playerId: player.id })));
       }
