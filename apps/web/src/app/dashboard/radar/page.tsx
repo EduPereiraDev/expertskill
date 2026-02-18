@@ -52,8 +52,9 @@ export default function RadarPage() {
   useEffect(() => {
     if (!isPro) return;
     
+    let isFirst = true;
     const fetchPartidas = async () => {
-      setIsLoading(true);
+      if (isFirst) setIsLoading(true);
       setError('');
       try {
         const liga = ligaSelecionada === 'TODAS' ? undefined : ligaSelecionada;
@@ -62,12 +63,12 @@ export default function RadarPage() {
       } catch (err: any) {
         setError(err.response?.data?.message || 'Erro ao carregar partidas');
       } finally {
-        setIsLoading(false);
+        if (isFirst) { setIsLoading(false); isFirst = false; }
       }
     };
 
     fetchPartidas();
-    const interval = setInterval(fetchPartidas, 10000); // Atualiza a cada 10s (tempo real)
+    const interval = setInterval(fetchPartidas, 10000); // Atualiza a cada 10s (silencioso)
     return () => clearInterval(interval);
   }, [ligaSelecionada, isPro]);
 
