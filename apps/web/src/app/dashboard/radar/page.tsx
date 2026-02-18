@@ -620,39 +620,44 @@ export default function RadarPage() {
                     const temTroia = placaresRepetidos.length > 0;
                     const StatsCard = ({ title, stats, color }: { title: string; stats: any; color: string }) => (
                       <div className={cn('p-3 bg-zinc-900/40 rounded border', stats ? 'border-zinc-800' : 'border-zinc-800/50')}>
-                        <p className={cn('text-[10px] font-medium mb-2', color)}>{title}</p>
+                        <p className={cn('text-xs font-semibold mb-2', color)}>{title}</p>
                         {stats ? (
-                          <div className="space-y-2">
+                          <div className="space-y-2.5">
                             <div className="flex items-center justify-between">
-                              <span className="text-xs text-zinc-500">Média gols:</span>
-                              <span className="text-sm font-bold text-white">{stats.media}</span>
+                              <span className="text-sm text-zinc-300 font-medium">Media gols:</span>
+                              <span className="text-xl font-bold text-white">{stats.media}</span>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-1.5">
                               {[
                                 { label: 'Over 2.5 FT', val: stats.over25, total: stats.total, pct: stats.over25Pct },
                                 { label: 'Gol no HT', val: stats.overHT, total: stats.total, pct: stats.overHTPct },
                                 { label: 'Ambos marcam', val: stats.btts, total: stats.total, pct: stats.bttsPct },
                               ].map(({ label, val, total, pct }) => (
                                 <div key={label} className="flex items-center gap-2">
-                                  <span className="text-[10px] text-zinc-500 w-20">{label}</span>
-                                  <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                  <span className="text-xs text-zinc-300 w-24">{label}</span>
+                                  <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
                                     <div className={cn('h-full rounded-full', pct >= 70 ? 'bg-green-500' : pct >= 50 ? 'bg-yellow-500' : 'bg-red-500')} style={{ width: `${pct}%` }} />
                                   </div>
-                                  <span className={cn('text-[10px] font-bold w-12 text-right', pct >= 70 ? 'text-green-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400')}>
+                                  <span className={cn('text-xs font-bold w-10 text-right', pct >= 70 ? 'text-green-400' : pct >= 50 ? 'text-yellow-400' : 'text-red-400')}>
                                     {val}/{total}
                                   </span>
                                 </div>
                               ))}
                             </div>
-                            <p className="text-[10px] text-zinc-600 mt-1">
-                              {stats.over25Pct >= 70 ? 'Forte tendência Over neste contexto'
-                                : stats.over25Pct >= 50 ? 'Tendência moderada para Over'
-                                : stats.over25Pct >= 30 ? 'Tendência neutra — avaliar com cautela'
-                                : 'Tendência Under — cuidado com entradas Over'}
+                            <p className={cn('text-xs font-medium mt-1 px-2 py-1 rounded',
+                              stats.over25Pct >= 70 ? 'text-green-400 bg-green-500/10' 
+                                : stats.over25Pct >= 50 ? 'text-yellow-400 bg-yellow-500/10'
+                                : stats.over25Pct >= 30 ? 'text-zinc-400 bg-zinc-800'
+                                : 'text-red-400 bg-red-500/10'
+                            )}>
+                              {stats.over25Pct >= 70 ? 'Forte tendencia Over neste contexto'
+                                : stats.over25Pct >= 50 ? 'Tendencia moderada para Over'
+                                : stats.over25Pct >= 30 ? 'Tendencia neutra — avaliar com cautela'
+                                : 'Tendencia Under — cuidado com entradas Over'}
                             </p>
                           </div>
                         ) : (
-                          <p className="text-[10px] text-zinc-600 py-2">Sem dados suficientes</p>
+                          <p className="text-sm text-zinc-500 py-4 text-center">Sem dados suficientes</p>
                         )}
                       </div>
                     );
