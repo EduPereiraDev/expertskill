@@ -205,11 +205,15 @@ export class PagamentosService {
 
     const status = this.mapStripeStatus(subscription.status);
     
+    const fimEm = subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000)
+      : undefined;
+
     await this.prisma.assinatura.update({
       where: { id: assinatura.id },
       data: {
         status,
-        fimEm: new Date(subscription.current_period_end * 1000),
+        ...(fimEm && !isNaN(fimEm.getTime()) && { fimEm }),
       },
     });
 
