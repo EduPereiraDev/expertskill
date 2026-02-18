@@ -219,16 +219,26 @@ export class Bet365Service {
       return cached;
     }
 
-    const response = await this.getUpcoming();
-    const filtered = (response.results || []).filter((e) =>
-      e.league?.name?.toLowerCase().includes('soccer') ||
-      e.league?.name?.toLowerCase().includes('esoccer')
-    );
+    // Paginar para encontrar todos os eSoccer (API retorna 50 por página de ~1200+ eventos)
+    const allEsoccer: Bet365Event[] = [];
+    const maxPages = 5;
+    for (let page = 1; page <= maxPages; page++) {
+      if (!this.canMakeRequest()) break;
+      const response = await this.getUpcoming({ page: String(page) });
+      const events = response.results || [];
+      const filtered = events.filter((e) =>
+        e.league?.name?.toLowerCase().includes('soccer') ||
+        e.league?.name?.toLowerCase().includes('esoccer')
+      );
+      allEsoccer.push(...filtered);
+      // Parar se menos de 50 resultados (última página) ou já temos bastante
+      if (events.length < 50 || allEsoccer.length >= 30) break;
+    }
 
     // Salvar no cache
-    await this.cacheService.setUpcomingEvents(filtered);
-    this.logger.debug('Cache SET: upcoming events');
-    return filtered;
+    await this.cacheService.setUpcomingEvents(allEsoccer);
+    this.logger.debug(`Cache SET: ${allEsoccer.length} upcoming eSoccer events`);
+    return allEsoccer;
   }
 
   async getEsoccerLeagues(): Promise<Array<{ id: string; name: string }>> {
