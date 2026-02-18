@@ -348,6 +348,36 @@ export default function RadarPage() {
             const timeJ1 = j1.nome.match(/^([^(]+)/)?.[1]?.trim() || j1.nome;
             const timeJ2 = j2.nome.match(/^([^(]+)/)?.[1]?.trim() || j2.nome;
 
+            // H2H unificado (backend + nickname) — escopo compartilhado entre blocos
+            const h2hJogosGlobal = a.h2h.confrontosDiretos || [];
+            const j1VsJ2ByNickGlobal = j1.ultimasPartidas.filter((p: any) => {
+              const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
+              return adv.toLowerCase() === nomeJ2.toLowerCase();
+            });
+            const j2VsJ1ByNickGlobal = j2.ultimasPartidas.filter((p: any) => {
+              const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
+              return adv.toLowerCase() === nomeJ1.toLowerCase();
+            });
+            const h2hIdsGlobal = new Set(h2hJogosGlobal.map((p: any) => p.id));
+            const confrontosNickGlobal = [...j1VsJ2ByNickGlobal, ...j2VsJ1ByNickGlobal].filter((p: any) => !h2hIdsGlobal.has(p.id));
+            const todosConfrontos = [
+              ...h2hJogosGlobal,
+              ...confrontosNickGlobal.map((p: any) => ({ ...p, totalGols: p.totalGols ?? ((p.golsPro || 0) + (p.golsContra || 0)) })),
+            ].sort((a: any, b: any) => new Date(a.data || 0).getTime() - new Date(b.data || 0).getTime());
+            const idaVolta = todosConfrontos.length >= 2 ? (() => {
+              const ida = todosConfrontos[todosConfrontos.length - 2];
+              const volta = todosConfrontos[todosConfrontos.length - 1];
+              if (!ida || !volta) return null;
+              const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
+              const voltaGols = volta.totalGols ?? ((volta.golsPro || 0) + (volta.golsContra || 0));
+              return { tipo: 'ambos' as const, idaGols, voltaGols, idaOver: idaGols > 2, voltaOver: voltaGols > 2 };
+            })() : todosConfrontos.length === 1 ? (() => {
+              const ida = todosConfrontos[0];
+              if (!ida) return null;
+              const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
+              return { tipo: 'somente_ida' as const, idaGols, voltaGols: 0, idaOver: idaGols > 2, voltaOver: false };
+            })() : null;
+
             // Taxa de acerto real baseada no histórico com filtro
             const todasPartidasRaw = [...j1.ultimasPartidas, ...j2.ultimasPartidas];
             const todasPartidas = filtroDesempenho === 'time'
@@ -445,41 +475,12 @@ export default function RadarPage() {
                     const j1VsPlayer = j1.ultimasPartidas.filter((p: any) => (p.adversario.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase() === nomeJ2.toLowerCase());
                     const j2VsPlayer = j2.ultimasPartidas.filter((p: any) => (p.adversario.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase() === nomeJ1.toLowerCase());
                     const statsPlayer = calcStats([...j1VsPlayer, ...j2VsPlayer]);
-                    const h2hJogos = a.h2h.confrontosDiretos || [];
-                    // Complementar H2H com confrontos por nickname (mesmo jogador em times diferentes)
-                    const j1VsJ2ByNick = j1.ultimasPartidas.filter((p: any) => {
-                      const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
-                      return adv.toLowerCase() === nomeJ2.toLowerCase();
-                    });
-                    const j2VsJ1ByNick = j2.ultimasPartidas.filter((p: any) => {
-                      const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
-                      return adv.toLowerCase() === nomeJ1.toLowerCase();
-                    });
-                    // Unificar: usar H2H do backend + confrontos por nickname (sem duplicatas)
-                    const h2hIds = new Set(h2hJogos.map((p: any) => p.id));
-                    const confrontosNick = [...j1VsJ2ByNick, ...j2VsJ1ByNick].filter((p: any) => !h2hIds.has(p.id));
-                    const todosConfrontos = [
-                      ...h2hJogos,
-                      ...confrontosNick.map((p: any) => ({ ...p, totalGols: p.totalGols ?? ((p.golsPro || 0) + (p.golsContra || 0)) })),
-                    ].sort((a: any, b: any) => new Date(a.data || 0).getTime() - new Date(b.data || 0).getTime());
+                    // todosConfrontos e idaVolta ja declarados no escopo pai
                     const placaresH2Hx = todosConfrontos.map((p: any) => `${p.golsPro}-${p.golsContra}`);
                     const placarCount: Record<string, number> = {};
                     placaresH2Hx.forEach((pl: string) => { placarCount[pl] = (placarCount[pl] || 0) + 1; });
                     const placaresRepetidos = Object.entries(placarCount).filter(([_, c]) => c >= 2);
                     const temTroia = placaresRepetidos.length > 0;
-                    const idaVolta = todosConfrontos.length >= 2 ? (() => {
-                      const ida = todosConfrontos[todosConfrontos.length - 2];
-                      const volta = todosConfrontos[todosConfrontos.length - 1];
-                      if (!ida || !volta) return null;
-                      const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
-                      const voltaGols = volta.totalGols ?? ((volta.golsPro || 0) + (volta.golsContra || 0));
-                      return { tipo: 'ambos' as const, idaGols, voltaGols, idaOver: idaGols > 2, voltaOver: voltaGols > 2 };
-                    })() : todosConfrontos.length === 1 ? (() => {
-                      const ida = todosConfrontos[0];
-                      if (!ida) return null;
-                      const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
-                      return { tipo: 'somente_ida' as const, idaGols, voltaGols: 0, idaOver: idaGols > 2, voltaOver: false };
-                    })() : null;
                     const StatsCard = ({ title, stats, color }: { title: string; stats: any; color: string }) => (
                       <div className={cn('p-3 bg-zinc-900/40 rounded border', stats ? 'border-zinc-800' : 'border-zinc-800/50')}>
                         <p className={cn('text-[10px] font-medium mb-2', color)}>{title}</p>
@@ -740,6 +741,20 @@ export default function RadarPage() {
                       const cleanSheets = p.filter((g: any) => g.golsContra === 0).length;
                       const goleadas = p.filter((g: any) => Math.abs(g.golsPro - g.golsContra) >= 3).length;
 
+                      // % jogos sofrendo 2+ gols
+                      const sofreu2mais = p.filter((g: any) => g.golsContra >= 2).length;
+                      const sofreu2maisPct = Math.round((sofreu2mais / p.length) * 100);
+
+                      // Classificacao: Agressivo / Equilibrado / Controlador
+                      const classificacao = mediaGolsPro >= 3 ? 'AGRESSIVO'
+                        : mediaGolsPro >= 2 && mediaGolsPro < 3 ? 'EQUILIBRADO'
+                        : 'CONTROLADOR';
+
+                      // Indice de Agressividade (IA): media gols marcados (sem finalizacoes da API)
+                      const indiceAgressividade = parseFloat(mediaGolsPro.toFixed(2));
+                      // Indice de Estabilidade (IE): 1 / media gols sofridos
+                      const indiceEstabilidade = mediaGolsContra > 0 ? parseFloat((1 / mediaGolsContra).toFixed(2)) : 9.99;
+
                       return {
                         isVolta, mediaGols: mediaGols.toFixed(1), over25Pct, bttsPct, golNoHTPct,
                         postura, mediaGolsPro: mediaGolsPro.toFixed(1), mediaGolsContra: mediaGolsContra.toFixed(1),
@@ -749,6 +764,7 @@ export default function RadarPage() {
                         anomaliaPct, anomalias, placarMaisFreq, consistencia, desvio: desvio.toFixed(1),
                         tendenciaGols, mediaRecente: mediaRecente.toFixed(1), mediaAntiga: mediaAntiga.toFixed(1),
                         cleanSheets, goleadas,
+                        sofreu2maisPct, classificacao, indiceAgressividade, indiceEstabilidade,
                       };
                     };
 
@@ -756,6 +772,17 @@ export default function RadarPage() {
                     const analiseJ2 = analisarJogador(j2, nomeJ2, nomeJ1);
 
                     if (!analiseJ1 || !analiseJ2) return null;
+
+                    const classificacaoLabel = (c: string) => ({
+                      AGRESSIVO: 'Agressivo',
+                      EQUILIBRADO: 'Equilibrado',
+                      CONTROLADOR: 'Controlador',
+                    }[c] || c);
+                    const classificacaoColor = (c: string) => ({
+                      AGRESSIVO: 'text-red-400 bg-red-500/10 border-red-500/30',
+                      EQUILIBRADO: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/30',
+                      CONTROLADOR: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+                    }[c] || 'text-zinc-400 bg-zinc-800 border-zinc-700');
 
                     const posturaLabel = (p: string) => ({
                       OFENSIVO_VULNERAVEL: 'Ofensivo mas vulnerável',
@@ -781,66 +808,63 @@ export default function RadarPage() {
                       <div className="p-3 bg-zinc-900/40 rounded border border-zinc-800">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-xs font-medium text-white">{nome}</span>
-                          <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium', posturaColor(analise.postura))}>
-                            {posturaLabel(analise.postura)}
+                          <span className={cn('text-[10px] px-1.5 py-0.5 rounded font-medium border', classificacaoColor(analise.classificacao))}>
+                            {classificacaoLabel(analise.classificacao)}
                           </span>
                         </div>
                         <div className="space-y-2 text-[11px]">
-                          {/* Gols */}
-                          <div>
+                          {/* Forca Ofensiva */}
+                          <div className="p-1.5 bg-zinc-800/30 rounded">
+                            <p className="text-[9px] text-green-500 font-medium mb-1">FORCA OFENSIVA</p>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Média gols/jogo:</span>
+                              <span className="text-zinc-500">Media gols/jogo:</span>
                               <span className="text-white font-medium">{analise.mediaGols}</span>
                             </div>
-                            <p className="text-[9px] text-zinc-600 mt-0.5">
-                              {parseFloat(analise.mediaGols) >= 3.5 ? 'Jogos muito movimentados — forte indicativo de Over'
-                                : parseFloat(analise.mediaGols) >= 2.5 ? 'Média saudável para mercados de Over 2.5'
-                                : parseFloat(analise.mediaGols) >= 1.5 ? 'Média moderada — Over 1.5 mais seguro'
-                                : 'Média baixa — jogos tendem a ser fechados'}
-                            </p>
+                            <div className="flex justify-between mt-0.5">
+                              <span className="text-zinc-500">Over 2.5:</span>
+                              <span className={cn('font-medium', analise.over25Pct >= 60 ? 'text-green-400' : analise.over25Pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>
+                                {analise.over25Pct}%
+                              </span>
+                            </div>
+                            <div className="flex justify-between mt-0.5">
+                              <span className="text-zinc-500">Ambas marcam:</span>
+                              <span className={cn('font-medium', analise.bttsPct >= 60 ? 'text-green-400' : analise.bttsPct >= 40 ? 'text-yellow-400' : 'text-red-400')}>
+                                {analise.bttsPct}%
+                              </span>
+                            </div>
                           </div>
 
-                          {/* Faz / Sofre */}
-                          <div>
+                          {/* Defesa */}
+                          <div className="p-1.5 bg-zinc-800/30 rounded">
+                            <p className="text-[9px] text-blue-500 font-medium mb-1">DEFESA</p>
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Media gols sofridos:</span>
+                              <span className={cn('font-medium', parseFloat(analise.mediaGolsContra) <= 1 ? 'text-green-400' : parseFloat(analise.mediaGolsContra) <= 2 ? 'text-yellow-400' : 'text-red-400')}>
+                                {analise.mediaGolsContra}
+                              </span>
+                            </div>
+                            <div className="flex justify-between mt-0.5">
+                              <span className="text-zinc-500">Sofreu 2+ gols:</span>
+                              <span className={cn('font-medium', analise.sofreu2maisPct <= 30 ? 'text-green-400' : analise.sofreu2maisPct <= 50 ? 'text-yellow-400' : 'text-red-400')}>
+                                {analise.sofreu2maisPct}%
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Perfil de Jogo */}
+                          <div className="p-1.5 bg-zinc-800/30 rounded">
+                            <p className="text-[9px] text-purple-500 font-medium mb-1">PERFIL DE JOGO</p>
                             <div className="flex justify-between">
                               <span className="text-zinc-500">Faz / Sofre:</span>
                               <span className="text-zinc-300">{analise.mediaGolsPro} / {analise.mediaGolsContra}</span>
                             </div>
                             <p className="text-[9px] text-zinc-600 mt-0.5">
-                              {parseFloat(analise.mediaGolsPro) >= 2 && parseFloat(analise.mediaGolsContra) >= 1.5
-                                ? 'Ataca muito mas sofre bastante — jogo aberto, bom para Over e BTTS'
-                                : parseFloat(analise.mediaGolsPro) >= 2
-                                ? 'Forte no ataque e seguro atras — pode dominar e abrir o placar'
-                                : parseFloat(analise.mediaGolsContra) <= 0.8
-                                ? 'Defesa solida, dificil de vazarem — cuidado com Under'
-                                : 'Equilibrio entre ataque e defesa'}
+                              {analise.classificacao === 'AGRESSIVO'
+                                ? 'Media +3 gols por jogo — jogos muito movimentados'
+                                : analise.classificacao === 'EQUILIBRADO'
+                                ? '2 a 3 gols por jogo — perfil moderado'
+                                : 'Under forte — jogos tendem a ser fechados'}
                             </p>
-                          </div>
-
-                          {/* Over e BTTS */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-1.5 bg-zinc-800/50 rounded">
-                              <div className="flex justify-between">
-                                <span className="text-zinc-500">Over 2.5:</span>
-                                <span className={cn('font-medium', analise.over25Pct >= 60 ? 'text-green-400' : analise.over25Pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>
-                                  {analise.over25Pct}%
-                                </span>
-                              </div>
-                              <p className="text-[9px] text-zinc-600 mt-0.5">
-                                {analise.over25Pct >= 70 ? 'Padrao forte de Over' : analise.over25Pct >= 50 ? 'Tendencia moderada' : 'Mais Under que Over'}
-                              </p>
-                            </div>
-                            <div className="p-1.5 bg-zinc-800/50 rounded">
-                              <div className="flex justify-between">
-                                <span className="text-zinc-500">BTTS:</span>
-                                <span className={cn('font-medium', analise.bttsPct >= 60 ? 'text-green-400' : analise.bttsPct >= 40 ? 'text-yellow-400' : 'text-red-400')}>
-                                  {analise.bttsPct}%
-                                </span>
-                              </div>
-                              <p className="text-[9px] text-zinc-600 mt-0.5">
-                                {analise.bttsPct >= 70 ? 'Ambos marcam com frequencia' : analise.bttsPct >= 50 ? 'BTTS moderado' : 'Dificil ambos marcarem'}
-                              </p>
-                            </div>
                           </div>
 
                           {/* ML */}
@@ -1109,6 +1133,149 @@ export default function RadarPage() {
                                   </div>
                                 );
                               })()}
+                            </div>
+                          );
+                        })()}
+
+                        {/* Indices Expert */}
+                        {(() => {
+                          // Indice de Volatilidade H2H: jogos Over 3.5 nos confrontos
+                          const over35H2H = todosConfrontos.filter((p: any) => {
+                            const gols = p.totalGols ?? ((p.golsPro || 0) + (p.golsContra || 0));
+                            return gols > 3;
+                          }).length;
+                          const volatilidadeH2H = todosConfrontos.length > 0
+                            ? Math.round((over35H2H / todosConfrontos.length) * 100)
+                            : null;
+
+                          // Analise de agregado: se tem ida, calcular desvantagem e tendencia
+                          const agregado = idaVolta && idaVolta.tipo === 'somente_ida' ? (() => {
+                            const ultimo = todosConfrontos[todosConfrontos.length - 1];
+                            if (!ultimo) return null;
+                            const golsJ1 = ultimo.golsPro || 0;
+                            const golsJ2 = ultimo.golsContra || 0;
+                            const diff = Math.abs(golsJ1 - golsJ2);
+                            const quemPerdeu = golsJ1 < golsJ2 ? nomeJ1 : golsJ1 > golsJ2 ? nomeJ2 : null;
+                            return { golsJ1, golsJ2, diff, quemPerdeu, placar: `${golsJ1}x${golsJ2}` };
+                          })() : null;
+
+                          return (
+                            <div className="mt-3 p-3 bg-gradient-to-r from-zinc-900/80 to-zinc-800/40 rounded-lg border border-zinc-700">
+                              <p className="text-[10px] text-cyan-400 font-semibold mb-2">INDICES EXPERT</p>
+                              <div className="space-y-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                  {[analiseJ1, analiseJ2].map((a, i) => (
+                                    <div key={i} className="p-2 bg-zinc-900/60 rounded border border-zinc-800">
+                                      <p className="text-[9px] text-zinc-500 mb-1">{i === 0 ? nomeJ1 : nomeJ2}</p>
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        <div>
+                                          <p className="text-[8px] text-red-400">IA (Agressividade)</p>
+                                          <p className={cn('text-sm font-bold', a.indiceAgressividade >= 2.5 ? 'text-red-400' : a.indiceAgressividade >= 1.5 ? 'text-yellow-400' : 'text-blue-400')}>
+                                            {a.indiceAgressividade.toFixed(1)}
+                                          </p>
+                                        </div>
+                                        <div>
+                                          <p className="text-[8px] text-blue-400">IE (Estabilidade)</p>
+                                          <p className={cn('text-sm font-bold', a.indiceEstabilidade >= 1 ? 'text-green-400' : a.indiceEstabilidade >= 0.5 ? 'text-yellow-400' : 'text-red-400')}>
+                                            {a.indiceEstabilidade.toFixed(2)}
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                {/* Volatilidade H2H */}
+                                <div className="p-2 bg-zinc-900/60 rounded border border-zinc-800">
+                                  <div className="flex items-center justify-between">
+                                    <div>
+                                      <p className="text-[8px] text-yellow-400">Volatilidade H2H</p>
+                                      <p className="text-[9px] text-zinc-500">Jogos Over 3.5 nos confrontos</p>
+                                    </div>
+                                    {volatilidadeH2H !== null ? (
+                                      <div className="text-right">
+                                        <p className={cn('text-lg font-bold', volatilidadeH2H >= 50 ? 'text-red-400' : volatilidadeH2H >= 30 ? 'text-yellow-400' : 'text-blue-400')}>
+                                          {volatilidadeH2H}%
+                                        </p>
+                                        <p className="text-[8px] text-zinc-600">{over35H2H}/{todosConfrontos.length} jogos</p>
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-zinc-600">Sem H2H</p>
+                                    )}
+                                  </div>
+                                  {volatilidadeH2H !== null && (
+                                    <div className="mt-1.5 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                      <div className={cn('h-full rounded-full', volatilidadeH2H >= 50 ? 'bg-red-500' : volatilidadeH2H >= 30 ? 'bg-yellow-500' : 'bg-blue-500')} style={{ width: `${volatilidadeH2H}%` }} />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <p className="text-[8px] text-zinc-600 mt-2">
+                                IA = media gols marcados | IE = 1/media gols sofridos (maior = mais solido) | Volatilidade = % Over 3.5 no H2H
+                              </p>
+
+                              {/* Analise de Agregado (quando tem ida) */}
+                              {agregado && (
+                                <div className="mt-2 p-2 bg-orange-500/5 rounded border border-orange-500/20">
+                                  <p className="text-[9px] text-orange-400 font-medium mb-1">ANALISE DE AGREGADO</p>
+                                  <p className="text-[10px] text-zinc-400">
+                                    Ida terminou <span className="text-white font-medium">{agregado.placar}</span>
+                                    {agregado.diff >= 2 && agregado.quemPerdeu && (
+                                      <span className="text-orange-300">
+                                        {' '}— {agregado.quemPerdeu} precisa reverter {agregado.diff} gols de desvantagem
+                                      </span>
+                                    )}
+                                  </p>
+                                  {agregado.diff >= 2 && (
+                                    <div className="mt-1 space-y-0.5">
+                                      <p className="text-[9px] text-green-400">Quem perdeu por 2+ gols tende a se expor — 70% dos jogos de volta tem Over</p>
+                                      <p className="text-[9px] text-green-400">6 min e pouco tempo — jogo tende a ser acelerado</p>
+                                      <p className="text-[9px] text-yellow-400">Chance alta de ambas marcarem (BTTS)</p>
+                                    </div>
+                                  )}
+                                  {agregado.diff === 1 && (
+                                    <div className="mt-1 space-y-0.5">
+                                      <p className="text-[9px] text-yellow-400">Desvantagem de 1 gol — jogo tende a ser disputado</p>
+                                      <p className="text-[9px] text-zinc-500">Quem esta atras vai pressionar, mas sem desespero</p>
+                                    </div>
+                                  )}
+                                  {agregado.diff === 0 && (
+                                    <p className="text-[9px] text-zinc-500 mt-1">Empate na ida — volta e decisiva, ambos vao buscar o resultado</p>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Analise comportamental da volta */}
+                              {(analiseJ1.isVolta || analiseJ2.isVolta) && idaVolta && idaVolta.tipo === 'ambos' && (
+                                <div className="mt-2 p-2 bg-purple-500/5 rounded border border-purple-500/20">
+                                  <p className="text-[9px] text-purple-400 font-medium mb-1">COMPORTAMENTO NA VOLTA</p>
+                                  {(() => {
+                                    const idaGols = idaVolta.idaGols;
+                                    const voltaGols = idaVolta.voltaGols;
+                                    const voltaMaisGols = voltaGols > idaGols;
+                                    const voltaMenosGols = voltaGols < idaGols;
+                                    return (
+                                      <div className="space-y-0.5">
+                                        {voltaMaisGols && (
+                                          <p className="text-[9px] text-green-400">Volta teve mais gols ({voltaGols}) que ida ({idaGols}) — quem perdeu forcou o jogo</p>
+                                        )}
+                                        {voltaMenosGols && (
+                                          <p className="text-[9px] text-yellow-400">Volta teve menos gols ({voltaGols}) que ida ({idaGols}) — quem venceu administrou</p>
+                                        )}
+                                        {!voltaMaisGols && !voltaMenosGols && (
+                                          <p className="text-[9px] text-zinc-400">Ida e volta com mesma quantidade de gols — padrao consistente</p>
+                                        )}
+                                        <p className="text-[9px] text-zinc-500">
+                                          {idaVolta.idaOver && idaVolta.voltaOver
+                                            ? 'Ambos jogos Over — confronto historicamente movimentado'
+                                            : !idaVolta.idaOver && !idaVolta.voltaOver
+                                            ? 'Ambos jogos Under — confronto historicamente fechado'
+                                            : 'Padrao misto entre ida e volta — imprevisivel'}
+                                        </p>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              )}
                             </div>
                           );
                         })()}
