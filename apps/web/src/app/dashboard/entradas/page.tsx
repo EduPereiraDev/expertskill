@@ -56,6 +56,7 @@ export default function EntradasPage() {
   const [banca, setBanca] = useState<Banca | null>(null);
   const [modalAberto, setModalAberto] = useState(false);
   const [editandoEntrada, setEditandoEntrada] = useState<Entrada | null>(null);
+  const [deletandoId, setDeletandoId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({
     liga: 'GT_12MIN',
     mercado: 'Over 2.5 FT',
@@ -207,10 +208,10 @@ export default function EntradasPage() {
     }
   };
 
-  const handleDeletarEntrada = async (entradaId: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta entrada?')) return;
+  const handleDeletarEntrada = async () => {
+    if (!deletandoId) return;
     try {
-      await entradasApi.deletar(entradaId);
+      await entradasApi.deletar(deletandoId);
       const [hojeRes, statsRes] = await Promise.all([
         entradasApi.getHoje(),
         entradasApi.getEstatisticas(),
@@ -219,6 +220,8 @@ export default function EntradasPage() {
       setEstatisticas(statsRes.data);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Erro ao excluir entrada');
+    } finally {
+      setDeletandoId(null);
     }
   };
 
@@ -545,7 +548,7 @@ export default function EntradasPage() {
                           variant="outline"
                           size="sm"
                           className="border-red-500/30 text-red-400 hover:bg-red-500/20"
-                          onClick={() => handleDeletarEntrada(entrada.id)}
+                          onClick={() => setDeletandoId(entrada.id)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
@@ -906,6 +909,29 @@ export default function EntradasPage() {
             >
               Salvar Entrada
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de Confirmação de Exclusão */}
+      <Dialog open={!!deletandoId} onOpenChange={(open) => !open && setDeletandoId(null)}>
+        <DialogContent className="max-w-sm p-0 border-red-500/20">
+          <DialogHeader className="p-5 border-b border-zinc-800 bg-gradient-to-r from-red-500/10 to-transparent">
+            <DialogTitle className="text-lg font-semibold text-white flex items-center gap-2">
+              <Trash2 className="h-5 w-5 text-red-400" />
+              Excluir Entrada
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-5 space-y-4">
+            <p className="text-zinc-400 text-sm">Tem certeza que deseja excluir esta entrada? Esta ação não pode ser desfeita.</p>
+            <div className="flex gap-3 justify-end">
+              <Button variant="outline" size="sm" className="border-zinc-700 text-zinc-400" onClick={() => setDeletandoId(null)}>
+                Cancelar
+              </Button>
+              <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDeletarEntrada}>
+                Excluir
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
