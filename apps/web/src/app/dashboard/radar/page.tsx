@@ -389,8 +389,26 @@ export default function RadarPage() {
                       </span>
                     )}
                   </p>
+                  {/* Filtros gerais da analise */}
+                  <div className="flex gap-2 px-6 pb-3">
+                    <button
+                      onClick={() => setFiltroH2H(!filtroH2H)}
+                      className={cn(
+                        'px-3 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
+                        filtroH2H 
+                          ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' 
+                          : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
+                      )}
+                    >
+                      <Users className="h-3 w-3" />
+                      So confrontos
+                    </button>
+                  </div>
                 </DialogHeader>
                 <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  {filtroH2H && a.h2h.totalJogos === 0 && (
+                    <p className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1.5 rounded">Sem confrontos diretos registrados entre esses jogadores.</p>
+                  )}
 
                   {/* 4.5) ANÁLISE DE CONFRONTO */}
                   {(() => {
@@ -1459,24 +1477,7 @@ export default function RadarPage() {
 
                   {/* Jogadores Stats + Ultimos Jogos */}
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-zinc-400">Estatísticas dos Jogadores</span>
-                      <button
-                        onClick={() => setFiltroH2H(!filtroH2H)}
-                        className={cn(
-                          'px-3 py-1 rounded text-xs font-medium transition-colors flex items-center gap-1.5',
-                          filtroH2H 
-                            ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' 
-                            : 'bg-zinc-800 text-zinc-400 border border-zinc-700 hover:border-zinc-600'
-                        )}
-                      >
-                        <Users className="h-3 w-3" />
-                        {filtroH2H ? 'Só confrontos ✓' : 'Só confrontos'}
-                      </button>
-                    </div>
-                    {filtroH2H && a.h2h.totalJogos === 0 && (
-                      <p className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1.5 rounded">Sem confrontos diretos registrados entre esses jogadores.</p>
-                    )}
+                    <span className="text-sm text-zinc-400">Estatisticas dos Jogadores</span>
                   <div className="grid md:grid-cols-2 gap-3">
                     {[{ stats: j1, nome: nomeJ1, outroNome: nomeJ2 }, { stats: j2, nome: nomeJ2, outroNome: nomeJ1 }].map(({ stats, nome, outroNome }, idx) => {
                       const partidasFiltradas = filtroH2H 
