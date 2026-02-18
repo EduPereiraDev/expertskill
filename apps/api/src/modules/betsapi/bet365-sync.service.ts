@@ -70,8 +70,8 @@ export class Bet365SyncService implements OnModuleInit {
     if (this.isSyncing) return;
     this.isSyncing = true;
     try {
-      await this.syncEsoccerEvents();
-      await this.finalizarPartidasAntigas();
+      const { inplayIds } = await this.syncEsoccerEvents();
+      await this.finalizarPartidasAntigas(inplayIds);
     } catch (err) {
       this.logger.error('Cron sync failed', err);
     } finally {
@@ -95,7 +95,7 @@ export class Bet365SyncService implements OnModuleInit {
     }
   }
 
-  private async finalizarPartidasAntigas() {
+  private async finalizarPartidasAntigas(inplayIds: string[] = []) {
     // Timeout por liga: cada liga tem duração diferente
     const timeouts: { liga: Liga; minutos: number }[] = [
       { liga: Liga.VOLTA_6MIN, minutos: 8 },
@@ -112,6 +112,7 @@ export class Bet365SyncService implements OnModuleInit {
           status: StatusPartida.AO_VIVO,
           liga,
           dataHora: { lt: limite },
+          ...(inplayIds.length > 0 && { id: { notIn: inplayIds } }),
         },
         data: {
           status: StatusPartida.FINALIZADA,
@@ -128,10 +129,12 @@ export class Bet365SyncService implements OnModuleInit {
   async syncEsoccerEvents(): Promise<{ 
     synced: number; 
     errors: number; 
+    inplayIds: string[];
     rateLimit: { used: number; remaining: number } 
   }> {
     let synced = 0;
     let errors = 0;
+    let inplayIds: string[] = [];
 
     try {
       const upcomingEvents = await this.bet365Service.getEsoccerUpcoming();
@@ -150,6 +153,7 @@ export class Bet365SyncService implements OnModuleInit {
       const inplayEvents = await this.bet365Service.getEsoccerInplay();
       const inplayLeagues = [...new Set(inplayEvents.map(e => e.league?.name).filter(Boolean))];
       this.logger.log(`Inplay: ${inplayEvents.length} events — leagues: [${inplayLeagues.join(' | ')}]`);
+      inplayIds = inplayEvents.map(e => `bet365_${e.id}`);
 
       for (const event of inplayEvents) {
         try {
@@ -170,6 +174,7 @@ export class Bet365SyncService implements OnModuleInit {
     return { 
       synced, 
       errors, 
+      inplayIds,
       rateLimit: { 
         used: rateLimitStatus.used, 
         remaining: rateLimitStatus.remaining 
