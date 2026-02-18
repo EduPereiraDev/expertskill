@@ -24,6 +24,17 @@ export default function RootLayout({
       <body className={inter.className}>
         {children}
         <TelegramFloat />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('error', function(e) {
+                if (e.message && (e.message.includes('ChunkLoadError') || e.message.includes('Loading chunk'))) {
+                  window.location.reload();
+                }
+              });
+            `,
+          }}
+        />
       </body>
     </html>
   );
