@@ -95,16 +95,12 @@ export class RadarService {
   constructor(private prisma: PrismaService) {}
 
   async getPartidas(liga?: Liga, status?: StatusPartida): Promise<RadarPartida[]> {
-    const agora = new Date();
-    // Timeout por liga: Volta 6min=8min, Battle 8min/H2H=10min, GT 12min=14min
-    // Usar o maior (14min) como filtro geral — a finalização por liga já cuida do resto
-    const limiteAoVivo = new Date(agora.getTime() - 14 * 60 * 1000);
-
+    // A finalização por liga + proteção de inplayIds já garante que só partidas realmente
+    // finalizadas saem de AO_VIVO. Não precisamos de filtro de tempo aqui.
     const partidas = await this.prisma.partida.findMany({
       where: {
         ...(liga && { liga }),
         status: StatusPartida.AO_VIVO,
-        dataHora: { gte: limiteAoVivo },
       },
       include: {
         jogador1: true,
