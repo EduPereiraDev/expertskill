@@ -8,6 +8,7 @@ import { Liga, StatusPartida, Cenario } from '@prisma/client';
 export class Bet365SyncService implements OnModuleInit {
   private readonly logger = new Logger(Bet365SyncService.name);
   private isSyncing = false;
+  private isUpdatingStats = false;
 
   private readonly ESOCCER_LEAGUE_MAPPING: Record<string, Liga> = {
     'esoccer gt leagues - 12 mins play': Liga.GT_12MIN,
@@ -25,8 +26,8 @@ export class Bet365SyncService implements OnModuleInit {
   async onModuleInit() {
     this.logger.log('Bet365 Sync Service initialized - Fonte: Bet365 ONLY');
     this.logger.log('Cron jobs ativos:');
-    this.logger.log('  - A cada 30s: sync events + finalizar antigas + stats');
-    this.logger.log('  - A cada 5min: sync HT scores faltantes');
+    this.logger.log('  - A cada 10s: sync events + finalizar antigas (tempo real)');
+    this.logger.log('  - A cada 2min: stats jogadores + HT scores');
     this.logger.log('Crons desabilitados (/events/ended requer plano superior):');
     this.logger.log('  - Horario, Diario, Semanal (backfill/syncDay)');
 
@@ -64,22 +65,33 @@ export class Bet365SyncService implements OnModuleInit {
     this.logger.log(`Sync inicial completo. Total de partidas finalizadas: ${totalFinal}`);
   }
 
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async handleCronSync() {
     if (this.isSyncing) return;
     this.isSyncing = true;
     try {
       await this.syncEsoccerEvents();
       await this.finalizarPartidasAntigas();
-      await this.updatePlayerStats();
-      // Sync HT a cada 5 minutos (quando minuto % 5 === 0)
-      if (new Date().getMinutes() % 5 === 0) {
-        await this.syncMissingHTScores();
-      }
     } catch (err) {
       this.logger.error('Cron sync failed', err);
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  @Cron('*/2 * * * *') // A cada 2 minutos — stats e HT (pesado)
+  async handleStatsSync() {
+    if (this.isUpdatingStats) return;
+    this.isUpdatingStats = true;
+    try {
+      await this.updatePlayerStats();
+      if (new Date().getMinutes() % 5 === 0) {
+        await this.syncMissingHTScores();
+      }
+    } catch (err) {
+      this.logger.error('Stats sync failed', err);
+    } finally {
+      this.isUpdatingStats = false;
     }
   }
 

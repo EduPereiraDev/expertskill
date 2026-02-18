@@ -67,7 +67,7 @@ export default function RadarPage() {
     };
 
     fetchPartidas();
-    const interval = setInterval(fetchPartidas, 30000); // Atualiza a cada 30s
+    const interval = setInterval(fetchPartidas, 10000); // Atualiza a cada 10s (tempo real)
     return () => clearInterval(interval);
   }, [ligaSelecionada, isPro]);
 
