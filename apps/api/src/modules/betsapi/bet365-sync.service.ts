@@ -9,6 +9,7 @@ export class Bet365SyncService implements OnModuleInit {
   private readonly logger = new Logger(Bet365SyncService.name);
   private isSyncing = false;
   private isUpdatingStats = false;
+  private lastUpcomingSync = 0; // timestamp do ultimo sync de upcoming
 
   private readonly ESOCCER_LEAGUE_MAPPING: Record<string, Liga> = {
     'esoccer gt leagues - 12 mins play': Liga.GT_12MIN,
@@ -137,17 +138,22 @@ export class Bet365SyncService implements OnModuleInit {
     let inplayIds: string[] = [];
 
     try {
-      const upcomingEvents = await this.bet365Service.getEsoccerUpcoming();
-      this.logger.log(`Found ${upcomingEvents.length} eSoccer upcoming events from Bet365`);
+      // Upcoming: sincronizar a cada 30s (nao precisa ser a cada 10s como inplay)
+      const agora = Date.now();
+      if (agora - this.lastUpcomingSync >= 30_000) {
+        const upcomingEvents = await this.bet365Service.getEsoccerUpcoming();
+        this.logger.log(`Found ${upcomingEvents.length} eSoccer upcoming events from Bet365`);
 
-      for (const event of upcomingEvents) {
-        try {
-          await this.syncEvent(event, false);
-          synced++;
-        } catch (error) {
-          this.logger.error(`Error syncing event ${event.id}:`, error);
-          errors++;
+        for (const event of upcomingEvents) {
+          try {
+            await this.syncEvent(event, false);
+            synced++;
+          } catch (error) {
+            this.logger.error(`Error syncing event ${event.id}:`, error);
+            errors++;
+          }
         }
+        this.lastUpcomingSync = agora;
       }
 
       const inplayEvents = await this.bet365Service.getEsoccerInplay();
@@ -203,33 +209,54 @@ export class Bet365SyncService implements OnModuleInit {
     const score = this.parseScore(event.ss);
 
     const cenario = this.determineCenario(jogador1, jogador2);
+    const partidaId = `bet365_${event.id}`;
+    const novoStatus = isLive ? StatusPartida.AO_VIVO : StatusPartida.AGENDADA;
 
-    await this.prisma.partida.upsert({
-      where: {
-        id: `bet365_${event.id}`,
-      },
-      create: {
-        id: `bet365_${event.id}`,
-        jogador1Id: jogador1.id,
-        jogador2Id: jogador2.id,
-        liga,
-        dataHora: eventTime,
-        status: isLive ? StatusPartida.AO_VIVO : StatusPartida.AGENDADA,
-        golsHT1: score.ht1,
-        golsHT2: score.ht2,
-        golsFT1: score.ft1,
-        golsFT2: score.ft2,
-        cenario,
-      },
-      update: {
-        status: isLive ? StatusPartida.AO_VIVO : StatusPartida.AGENDADA,
-        golsHT1: score.ht1,
-        golsHT2: score.ht2,
-        golsFT1: score.ft1,
-        golsFT2: score.ft2,
-        dataHora: eventTime,
-      },
+    // Verificar se a partida ja existe e seu status atual
+    const existente = await this.prisma.partida.findUnique({
+      where: { id: partidaId },
+      select: { status: true },
     });
+
+    if (existente) {
+      // NUNCA regredir de FINALIZADA para AGENDADA (bug de partida fantasma)
+      // Permitir: AGENDADA→AO_VIVO, AO_VIVO→AO_VIVO (atualiza placar)
+      // Bloquear: FINALIZADA→AGENDADA, FINALIZADA→AO_VIVO (a menos que Bet365 diga que esta live)
+      const statusAtual = existente.status;
+      if (statusAtual === StatusPartida.FINALIZADA && !isLive) {
+        return; // Nao regredir FINALIZADA para AGENDADA
+      }
+
+      await this.prisma.partida.update({
+        where: { id: partidaId },
+        data: {
+          status: statusAtual === StatusPartida.FINALIZADA && isLive
+            ? StatusPartida.AO_VIVO  // Reabrir se Bet365 diz que esta live
+            : novoStatus,
+          golsHT1: score.ht1,
+          golsHT2: score.ht2,
+          golsFT1: score.ft1,
+          golsFT2: score.ft2,
+          dataHora: eventTime,
+        },
+      });
+    } else {
+      await this.prisma.partida.create({
+        data: {
+          id: partidaId,
+          jogador1Id: jogador1.id,
+          jogador2Id: jogador2.id,
+          liga,
+          dataHora: eventTime,
+          status: novoStatus,
+          golsHT1: score.ht1,
+          golsHT2: score.ht2,
+          golsFT1: score.ft1,
+          golsFT2: score.ft2,
+          cenario,
+        },
+      });
+    }
   }
 
   private async upsertJogador(nome: string, liga: Liga) {
@@ -392,7 +419,26 @@ export class Bet365SyncService implements OnModuleInit {
   }
 
   async updatePlayerStats(): Promise<{ updated: number }> {
-    const jogadores = await this.prisma.jogador.findMany();
+    // Buscar apenas jogadores que participaram de partidas nas ultimas 24h
+    const limite24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const jogadoresRecentes = await this.prisma.partida.findMany({
+      where: {
+        dataHora: { gte: limite24h },
+      },
+      select: { jogador1Id: true, jogador2Id: true },
+      distinct: ['jogador1Id', 'jogador2Id'],
+    });
+    const idsRecentes = new Set<string>();
+    jogadoresRecentes.forEach(p => {
+      idsRecentes.add(p.jogador1Id);
+      idsRecentes.add(p.jogador2Id);
+    });
+
+    if (idsRecentes.size === 0) return { updated: 0 };
+
+    const jogadores = await this.prisma.jogador.findMany({
+      where: { id: { in: [...idsRecentes] } },
+    });
     let updated = 0;
 
     for (const jogador of jogadores) {
