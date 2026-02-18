@@ -69,9 +69,15 @@ export class EntradasService {
       throw new BadRequestException('Configure sua banca antes de receber entradas');
     }
 
-    // Buscar partidas classificadas como OPERAR
-    const partidas = await this.radarService.getPartidas();
-    const partidasOperar = partidas.filter(p => p.classificacao === 'OPERAR').slice(0, 5);
+    // Buscar partidas AO_VIVO + AGENDADAS (próximas 2h) para recomendar
+    const [aoVivo, proximas] = await Promise.all([
+      this.radarService.getPartidas(),
+      this.radarService.getProximasPartidas(),
+    ]);
+    // Juntar sem duplicatas
+    const idsVisto = new Set(aoVivo.map(p => p.id));
+    const todas = [...aoVivo, ...proximas.filter(p => !idsVisto.has(p.id))];
+    const partidasOperar = todas.filter(p => p.classificacao === 'OPERAR').slice(0, 5);
 
     // Gerar entradas baseadas nas partidas
     const entradas: EntradaExpert[] = partidasOperar.map(partida => {

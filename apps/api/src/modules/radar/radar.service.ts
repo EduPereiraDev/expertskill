@@ -140,14 +140,14 @@ export class RadarService {
 
   async getProximasPartidas(liga?: Liga): Promise<RadarPartida[]> {
     const agora = new Date();
-    const em30Min = new Date(agora.getTime() + 30 * 60 * 1000);
+    const em2Horas = new Date(agora.getTime() + 2 * 60 * 60 * 1000);
 
     const partidas = await this.prisma.partida.findMany({
       where: {
         ...(liga && { liga }),
         dataHora: {
           gte: agora,
-          lte: em30Min,
+          lte: em2Horas,
         },
         status: StatusPartida.AGENDADA,
       },
@@ -156,7 +156,7 @@ export class RadarService {
         jogador2: true,
       },
       orderBy: { dataHora: 'asc' },
-      take: 10,
+      take: 20,
     });
 
     return partidas.map((p) => this.mapPartidaToRadar(p));
