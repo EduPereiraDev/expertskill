@@ -148,7 +148,8 @@ export class Bet365SyncService implements OnModuleInit {
       }
 
       const inplayEvents = await this.bet365Service.getEsoccerInplay();
-      this.logger.log(`Found ${inplayEvents.length} eSoccer inplay events from Bet365`);
+      const inplayLeagues = [...new Set(inplayEvents.map(e => e.league?.name).filter(Boolean))];
+      this.logger.log(`Inplay: ${inplayEvents.length} events — leagues: [${inplayLeagues.join(' | ')}]`);
 
       for (const event of inplayEvents) {
         try {
@@ -179,6 +180,7 @@ export class Bet365SyncService implements OnModuleInit {
   private async syncEvent(event: Bet365Event, isLive: boolean): Promise<void> {
     const liga = this.mapLeague(event.league?.name || '');
     if (!liga) {
+      this.logger.debug(`Unmapped league: "${event.league?.name}" (live=${isLive}, id=${event.id})`);
       return;
     }
 
