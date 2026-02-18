@@ -31,6 +31,12 @@ export interface RadarPartida {
     overMedio: number;
     probabilidadeOver25: number;
   };
+  veredicto: {
+    acao: 'ENTRA' | 'NAO_ENTRA' | 'ESPERA';
+    linha: string;
+    confianca: number;
+    motivo: string;
+  };
 }
 
 export interface HistoricoPartida {
@@ -206,6 +212,9 @@ export class RadarService {
       mediaTotal, overMedio, pct0x0, totalGolsAtual, isAoVivo, classificacao,
     );
 
+    // Gerar veredicto decisivo
+    const veredicto = this.gerarVeredicto(mediaTotal, overMedio, probabilidadeOver25, pct0x0, classificacao, cenario, isAoVivo, totalGolsAtual);
+
     return {
       id: partida.id,
       jogador1: {
@@ -232,6 +241,114 @@ export class RadarService {
         overMedio,
         probabilidadeOver25,
       },
+      veredicto,
+    };
+  }
+
+  private gerarVeredicto(
+    mediaTotal: number,
+    overMedio: number,
+    probOver25: number,
+    pct0x0: number,
+    classificacao: string,
+    cenario: Cenario,
+    isAoVivo: boolean,
+    totalGolsAtual: number,
+  ): { acao: 'ENTRA' | 'NAO_ENTRA' | 'ESPERA'; linha: string; confianca: number; motivo: string } {
+    // EVITAR: jogo fraco
+    if (cenario === Cenario.JOGO_FRACO || classificacao === 'EVITAR') {
+      // Verificar se Under tem valor
+      if (pct0x0 >= 20 && mediaTotal < 2.5) {
+        return {
+          acao: 'ENTRA',
+          linha: 'Under 2.5 FT',
+          confianca: Math.min(85, Math.round(50 + pct0x0)),
+          motivo: `Jogo travado com ${pct0x0.toFixed(0)}% de 0x0. Media ${mediaTotal.toFixed(1)} gols favorece Under.`,
+        };
+      }
+      if (mediaTotal < 3 && overMedio < 35) {
+        return {
+          acao: 'ENTRA',
+          linha: 'Under 3.5 FT',
+          confianca: Math.min(80, Math.round(40 + (100 - overMedio) * 0.5)),
+          motivo: `Media baixa (${mediaTotal.toFixed(1)}) e apenas ${overMedio.toFixed(0)}% Over. Tendencia Under clara.`,
+        };
+      }
+      return {
+        acao: 'NAO_ENTRA',
+        linha: '--',
+        confianca: 0,
+        motivo: `Jogo sem valor. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Sem linha segura.`,
+      };
+    }
+
+    // AO VIVO: Over Segurando (0x0 com media alta)
+    if (isAoVivo && cenario === Cenario.OVER_SEGURANDO && totalGolsAtual === 0 && mediaTotal >= 5) {
+      return {
+        acao: 'ESPERA',
+        linha: 'Over 0.5 HT (aguardar)',
+        confianca: Math.min(75, Math.round(overMedio * 0.8)),
+        motivo: `Placar 0x0 mas media ${mediaTotal.toFixed(1)}. Aguardar gol para confirmar tendencia antes de entrar.`,
+      };
+    }
+
+    // OVER FORTE: media >= 6 e over >= 75%
+    if (mediaTotal >= 6 && overMedio >= 75) {
+      return {
+        acao: 'ENTRA',
+        linha: mediaTotal >= 7 ? 'Over 2.5 FT' : 'Over 1.5 FT',
+        confianca: Math.min(95, Math.round(overMedio * 0.95 + (mediaTotal - 5) * 3)),
+        motivo: `Confronto explosivo. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Alta probabilidade de gols.`,
+      };
+    }
+
+    // OVER BOM: media >= 5 e over >= 65%
+    if (mediaTotal >= 5 && overMedio >= 65) {
+      const linha = mediaTotal >= 5.5 ? 'Over 1.5 FT' : 'Over 0.5 HT';
+      return {
+        acao: 'ENTRA',
+        linha,
+        confianca: Math.min(85, Math.round(overMedio * 0.85 + (mediaTotal - 4) * 2)),
+        motivo: `Bom confronto Over. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Linha segura: ${linha}.`,
+      };
+    }
+
+    // MODERADO: media >= 4 e over >= 55%
+    if (mediaTotal >= 4 && overMedio >= 55) {
+      return {
+        acao: 'ENTRA',
+        linha: 'Over 0.5 HT',
+        confianca: Math.min(72, Math.round(overMedio * 0.7 + (mediaTotal - 3) * 3)),
+        motivo: `Confronto moderado. Media ${mediaTotal.toFixed(1)} gols. Linha conservadora com boa margem.`,
+      };
+    }
+
+    // ZONA CINZA: media entre 3 e 4 ou over entre 45-55%
+    if (mediaTotal >= 3 && overMedio >= 45) {
+      return {
+        acao: 'ESPERA',
+        linha: 'Over 0.5 HT (se abrir)',
+        confianca: Math.min(55, Math.round(overMedio * 0.6)),
+        motivo: `Zona neutra. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Aguardar sinal ao vivo.`,
+      };
+    }
+
+    // UNDER: media < 3.5 e over < 45%
+    if (mediaTotal < 3.5 && overMedio < 45) {
+      return {
+        acao: 'ENTRA',
+        linha: 'Under 2.5 FT',
+        confianca: Math.min(78, Math.round((100 - overMedio) * 0.7 + (4 - mediaTotal) * 5)),
+        motivo: `Tendencia Under. Media ${mediaTotal.toFixed(1)} gols, apenas ${overMedio.toFixed(0)}% Over. Under com valor.`,
+      };
+    }
+
+    // DEFAULT: cautela
+    return {
+      acao: 'ESPERA',
+      linha: '--',
+      confianca: Math.min(40, Math.round(overMedio * 0.4)),
+      motivo: `Dados inconclusivos. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Sem vantagem clara.`,
     };
   }
 

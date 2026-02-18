@@ -541,8 +541,37 @@ export default function RadarPage() {
                     );
                   })()}
 
+                  {/* VEREDICTO — Decisao clara */}
+                  {partida.veredicto && (() => {
+                    const v = partida.veredicto;
+                    const acaoConfig = {
+                      ENTRA: { bg: 'bg-green-500/15', border: 'border-green-500/40', text: 'text-green-400', label: 'ENTRA', icon: Check },
+                      NAO_ENTRA: { bg: 'bg-red-500/15', border: 'border-red-500/40', text: 'text-red-400', label: 'NAO ENTRA', icon: Octagon },
+                      ESPERA: { bg: 'bg-yellow-500/15', border: 'border-yellow-500/40', text: 'text-yellow-400', label: 'ESPERA', icon: Clock },
+                    };
+                    const ac = acaoConfig[v.acao];
+                    const AcIcon = ac.icon;
+                    return (
+                      <div className={cn('p-2.5 rounded-lg border mb-2', ac.bg, ac.border)}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <AcIcon className={cn('h-4 w-4', ac.text)} />
+                            <span className={cn('text-sm font-bold', ac.text)}>{ac.label}</span>
+                            {v.linha !== '--' && (
+                              <span className="text-xs font-semibold text-white bg-zinc-800 px-2 py-0.5 rounded">{v.linha}</span>
+                            )}
+                          </div>
+                          {v.confianca > 0 && (
+                            <span className={cn('text-xs font-bold', ac.text)}>{v.confianca}%</span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-zinc-400 mt-1">{v.motivo}</p>
+                      </div>
+                    );
+                  })()}
+
                   {/* Indicadores - Linha única */}
-                  <div className="flex items-center justify-between pt-3 border-t border-zinc-800/50 text-xs">
+                  <div className="flex items-center justify-between pt-2 border-t border-zinc-800/50 text-xs">
                     <div className="flex items-center gap-4">
                       <span className="text-zinc-500">Media: <span className="text-zinc-300 font-medium">{partida.indicadores.mediaTotal.toFixed(1)}</span></span>
                       <span className="text-zinc-500">Over: <span className="text-zinc-300 font-medium">{partida.indicadores.overMedio.toFixed(0)}%</span></span>
@@ -730,6 +759,43 @@ export default function RadarPage() {
                   </p>
                 </DialogHeader>
                 <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
+                  {/* VEREDICTO PRINCIPAL — Bloco decisivo no topo */}
+                  {a.partida.veredicto && (() => {
+                    const v = a.partida.veredicto;
+                    const acaoConfig = {
+                      ENTRA: { bg: 'bg-green-500/10', border: 'border-green-500/40', text: 'text-green-400', glow: 'shadow-green-500/10', label: 'ENTRA' },
+                      NAO_ENTRA: { bg: 'bg-red-500/10', border: 'border-red-500/40', text: 'text-red-400', glow: 'shadow-red-500/10', label: 'NAO ENTRA' },
+                      ESPERA: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/40', text: 'text-yellow-400', glow: 'shadow-yellow-500/10', label: 'ESPERA' },
+                    };
+                    const ac = acaoConfig[v.acao];
+                    return (
+                      <div className={cn('p-4 rounded-xl border-2 shadow-lg', ac.bg, ac.border, ac.glow)}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-3">
+                            <span className={cn('text-2xl font-black tracking-tight', ac.text)}>{ac.label}</span>
+                            {v.linha !== '--' && (
+                              <span className="text-sm font-bold text-white bg-zinc-800 px-3 py-1 rounded-lg">{v.linha}</span>
+                            )}
+                          </div>
+                          {v.confianca > 0 && (
+                            <div className="text-right">
+                              <p className={cn('text-2xl font-black', ac.text)}>{v.confianca}%</p>
+                              <p className="text-[10px] text-zinc-500">confianca</p>
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-xs text-zinc-300">{v.motivo}</p>
+                        {v.confianca > 0 && (
+                          <div className="mt-2 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                            <div className={cn('h-full rounded-full transition-all',
+                              v.acao === 'ENTRA' ? 'bg-green-500' : v.acao === 'ESPERA' ? 'bg-yellow-500' : 'bg-red-500'
+                            )} style={{ width: `${v.confianca}%` }} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
                   {filtroH2H === 'jogador' && a.h2h.totalJogos === 0 && (
                     <p className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1.5 rounded">Sem confrontos diretos registrados entre esses jogadores.</p>
                   )}

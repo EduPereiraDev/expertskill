@@ -136,6 +136,12 @@ export interface RadarPartida {
     overMedio: number;
     probabilidadeOver25: number;
   };
+  veredicto: {
+    acao: 'ENTRA' | 'NAO_ENTRA' | 'ESPERA';
+    linha: string;
+    confianca: number;
+    motivo: string;
+  };
 }
 
 export interface HistoricoPartida {
