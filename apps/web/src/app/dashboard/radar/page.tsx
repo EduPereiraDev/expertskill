@@ -550,6 +550,8 @@ export default function RadarPage() {
                       const bttsCount = p.filter((g: any) => g.golsPro > 0 && g.golsContra > 0).length;
                       const over25Pct = Math.round((over25Count / p.length) * 100);
                       const bttsPct = Math.round((bttsCount / p.length) * 100);
+                      const golNoHTCount = p.filter((g: any) => (g.golsHT || 0) + (g.golsHTContra || 0) > 0 || (g.totalGolsHT || 0) > 0).length;
+                      const golNoHTPct = Math.round((golNoHTCount / p.length) * 100);
 
                       // Postura ofensiva vs defensiva
                       const mediaGolsPro = p.reduce((s: number, g: any) => s + g.golsPro, 0) / p.length;
@@ -639,7 +641,7 @@ export default function RadarPage() {
                       const goleadas = p.filter((g: any) => Math.abs(g.golsPro - g.golsContra) >= 3).length;
 
                       return {
-                        isVolta, mediaGols: mediaGols.toFixed(1), over25Pct, bttsPct,
+                        isVolta, mediaGols: mediaGols.toFixed(1), over25Pct, bttsPct, golNoHTPct,
                         postura, mediaGolsPro: mediaGolsPro.toFixed(1), mediaGolsContra: mediaGolsContra.toFixed(1),
                         vitorias, empates, derrotas, winRate,
                         mudancaTatica, pctHT, tendenciaRecente, totalJogos: p.length,
@@ -1076,93 +1078,216 @@ export default function RadarPage() {
                           </div>
                         </div>
 
-                        {/* Conclusão expandida */}
-                        <div className="mt-3 p-3 bg-zinc-900/60 rounded border border-zinc-700">
-                          <p className="text-[10px] text-purple-400 font-semibold mb-2">Conclusao e previsao</p>
+                        {/* Sugestões de Mercado */}
+                        <div className="mt-3 p-3 bg-gradient-to-b from-purple-900/20 to-zinc-900/60 rounded border border-purple-500/30">
+                          <p className="text-[10px] text-purple-400 font-semibold mb-3">🎯 Sugestoes de Mercado</p>
+                          
+                          {(() => {
+                            const mediaTotal = parseFloat(analiseJ1.mediaGolsPro) + parseFloat(analiseJ1.mediaGolsContra) + parseFloat(analiseJ2.mediaGolsPro) + parseFloat(analiseJ2.mediaGolsContra);
+                            const mediaFTCombinada = (parseFloat(analiseJ1.mediaGolsPro) + parseFloat(analiseJ2.mediaGolsPro));
+                            const over25Medio = (analiseJ1.over25Pct + analiseJ2.over25Pct) / 2;
+                            const bttsMedio = (analiseJ1.bttsPct + analiseJ2.bttsPct) / 2;
+                            const golHT1 = analiseJ1.golNoHTPct || 0;
+                            const golHT2 = analiseJ2.golNoHTPct || 0;
+                            const over05HTMedio = (golHT1 + golHT2) / 2;
+                            const ambosOfensivos = analiseJ1.postura === 'OFENSIVO' && analiseJ2.postura === 'OFENSIVO';
+                            const ambosDefensivos = analiseJ1.postura === 'DEFENSIVO' && analiseJ2.postura === 'DEFENSIVO';
+                            const streakOverForte = analiseJ1.streakOver >= 2 && analiseJ2.streakOver >= 2;
+                            const streakUnderForte = analiseJ1.streakUnder >= 2 && analiseJ2.streakUnder >= 2;
+                            const ambosConsistentes = analiseJ1.consistencia === 'ALTA' && analiseJ2.consistencia === 'ALTA';
+                            const algumInconsistente = analiseJ1.consistencia === 'BAIXA' || analiseJ2.consistencia === 'BAIXA';
+
+                            interface Sugestao {
+                              mercado: string;
+                              confianca: number;
+                              stake: string;
+                              motivo: string;
+                              tipo: 'principal' | 'alternativa' | 'arriscada';
+                            }
+                            const sugestoes: Sugestao[] = [];
+
+                            // === CENÁRIO OVER FORTE ===
+                            if (mediaFTCombinada >= 4 && over25Medio >= 65) {
+                              sugestoes.push({
+                                mercado: 'Over 2.5 FT',
+                                confianca: Math.min(95, 60 + Math.round(over25Medio - 50) + (streakOverForte ? 10 : 0) + (ambosConsistentes ? 5 : 0)),
+                                stake: ambosConsistentes ? 'Normal a Alta' : 'Normal',
+                                motivo: `Media combinada de ${mediaFTCombinada.toFixed(1)} gols. ${over25Medio.toFixed(0)}% Over 2.5 recente.`,
+                                tipo: 'principal',
+                              });
+                              if (mediaFTCombinada >= 5.5) {
+                                sugestoes.push({
+                                  mercado: 'Over 3.5 FT',
+                                  confianca: Math.min(85, 45 + Math.round((mediaFTCombinada - 4) * 10)),
+                                  stake: 'Baixa a Normal',
+                                  motivo: `Media alta (${mediaFTCombinada.toFixed(1)}). Potencial de goleada.`,
+                                  tipo: 'alternativa',
+                                });
+                              }
+                            } else if (mediaFTCombinada >= 3 && over25Medio >= 50) {
+                              sugestoes.push({
+                                mercado: 'Over 1.5 FT',
+                                confianca: Math.min(90, 55 + Math.round(over25Medio - 40)),
+                                stake: 'Normal',
+                                motivo: `Media de ${mediaFTCombinada.toFixed(1)} gols. Linha mais segura para este cenario.`,
+                                tipo: 'principal',
+                              });
+                            }
+
+                            // === CENÁRIO HT ===
+                            if (over05HTMedio >= 70 || (analiseJ1.mudancaTatica === 'FORTE_INICIO' && analiseJ2.mudancaTatica === 'FORTE_INICIO')) {
+                              sugestoes.push({
+                                mercado: 'Over 0.5 HT',
+                                confianca: Math.min(92, 60 + Math.round((over05HTMedio - 50) * 0.5) + (analiseJ1.mudancaTatica === 'FORTE_INICIO' ? 5 : 0)),
+                                stake: over05HTMedio >= 80 ? 'Normal a Alta' : 'Normal',
+                                motivo: `${over05HTMedio.toFixed(0)}% dos jogos tem gol no HT.${analiseJ1.mudancaTatica === 'FORTE_INICIO' && analiseJ2.mudancaTatica === 'FORTE_INICIO' ? ' Ambos começam forte.' : ''}`,
+                                tipo: sugestoes.length === 0 ? 'principal' : 'alternativa',
+                              });
+                            }
+
+                            // === CENÁRIO BTTS ===
+                            if (bttsMedio >= 55 && (ambosOfensivos || analiseJ1.postura === 'OFENSIVO_VULNERAVEL' || analiseJ2.postura === 'OFENSIVO_VULNERAVEL')) {
+                              sugestoes.push({
+                                mercado: 'Ambas Marcam (BTTS)',
+                                confianca: Math.min(88, 50 + Math.round(bttsMedio - 40) + (ambosOfensivos ? 8 : 0)),
+                                stake: bttsMedio >= 65 ? 'Normal' : 'Baixa',
+                                motivo: `BTTS em ${bttsMedio.toFixed(0)}% dos jogos.${analiseJ1.postura === 'OFENSIVO_VULNERAVEL' || analiseJ2.postura === 'OFENSIVO_VULNERAVEL' ? ' Jogador ofensivo mas vulneravel — gols dos dois lados.' : ' Ambos atacam bastante.'}`,
+                                tipo: sugestoes.length === 0 ? 'principal' : 'alternativa',
+                              });
+                            }
+
+                            // === CENÁRIO UNDER ===
+                            if (over25Medio < 40 || ambosDefensivos || streakUnderForte) {
+                              sugestoes.push({
+                                mercado: mediaFTCombinada < 2.5 ? 'Under 2.5 FT' : 'Under 3.5 FT',
+                                confianca: Math.min(85, 50 + Math.round((100 - over25Medio) - 50) + (ambosDefensivos ? 10 : 0) + (streakUnderForte ? 8 : 0)),
+                                stake: ambosDefensivos && streakUnderForte ? 'Normal' : 'Baixa a Normal',
+                                motivo: `Apenas ${over25Medio.toFixed(0)}% Over 2.5.${ambosDefensivos ? ' Ambos defensivos.' : ''}${streakUnderForte ? ' Sequencia Under ativa.' : ''}`,
+                                tipo: sugestoes.length === 0 ? 'principal' : 'alternativa',
+                              });
+                            }
+
+                            // === CENÁRIO ML (Resultado) ===
+                            if (analiseJ1.winRate >= 70 && analiseJ2.winRate <= 35) {
+                              sugestoes.push({
+                                mercado: `Dupla Hipotese ${nomeJ1}`,
+                                confianca: Math.min(80, 50 + Math.round((analiseJ1.winRate - analiseJ2.winRate) * 0.3)),
+                                stake: 'Baixa',
+                                motivo: `${nomeJ1} com ${analiseJ1.winRate}% win vs ${nomeJ2} com ${analiseJ2.winRate}%.`,
+                                tipo: 'arriscada',
+                              });
+                            } else if (analiseJ2.winRate >= 70 && analiseJ1.winRate <= 35) {
+                              sugestoes.push({
+                                mercado: `Dupla Hipotese ${nomeJ2}`,
+                                confianca: Math.min(80, 50 + Math.round((analiseJ2.winRate - analiseJ1.winRate) * 0.3)),
+                                stake: 'Baixa',
+                                motivo: `${nomeJ2} com ${analiseJ2.winRate}% win vs ${nomeJ1} com ${analiseJ1.winRate}%.`,
+                                tipo: 'arriscada',
+                              });
+                            }
+
+                            // Se nenhuma sugestão forte
+                            if (sugestoes.length === 0) {
+                              sugestoes.push({
+                                mercado: 'Aguardar ao vivo',
+                                confianca: 0,
+                                stake: 'Nenhuma',
+                                motivo: 'Dados inconclusivos. Aguarde o jogo iniciar e observe o ritmo antes de entrar.',
+                                tipo: 'principal',
+                              });
+                            }
+
+                            // Ordenar: principal > alternativa > arriscada, depois por confiança
+                            const ordem = { principal: 0, alternativa: 1, arriscada: 2 };
+                            sugestoes.sort((a, b) => ordem[a.tipo] - ordem[b.tipo] || b.confianca - a.confianca);
+
+                            return (
+                              <div className="space-y-2">
+                                {sugestoes.map((s, i) => (
+                                  <div key={i} className={cn(
+                                    'p-2.5 rounded-lg border',
+                                    s.tipo === 'principal' ? 'bg-purple-500/10 border-purple-500/30' :
+                                    s.tipo === 'alternativa' ? 'bg-zinc-800/50 border-zinc-700' :
+                                    'bg-orange-500/5 border-orange-500/20'
+                                  )}>
+                                    <div className="flex items-center justify-between mb-1">
+                                      <div className="flex items-center gap-2">
+                                        <span className={cn('text-[9px] px-1.5 py-0.5 rounded font-bold uppercase',
+                                          s.tipo === 'principal' ? 'bg-purple-500/20 text-purple-300' :
+                                          s.tipo === 'alternativa' ? 'bg-zinc-700 text-zinc-300' :
+                                          'bg-orange-500/20 text-orange-300'
+                                        )}>
+                                          {s.tipo === 'principal' ? '★ Principal' : s.tipo === 'alternativa' ? 'Alternativa' : '⚡ Valor'}
+                                        </span>
+                                        <span className="text-xs font-bold text-white">{s.mercado}</span>
+                                      </div>
+                                      {s.confianca > 0 && (
+                                        <span className={cn('text-[10px] font-bold',
+                                          s.confianca >= 75 ? 'text-green-400' :
+                                          s.confianca >= 55 ? 'text-yellow-400' : 'text-orange-400'
+                                        )}>
+                                          {s.confianca}%
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="text-[10px] text-zinc-400 leading-relaxed">{s.motivo}</p>
+                                    {s.confianca > 0 && (
+                                      <div className="flex items-center gap-3 mt-1.5">
+                                        <div className="flex items-center gap-1">
+                                          <span className="text-[9px] text-zinc-600">Stake:</span>
+                                          <span className={cn('text-[9px] font-medium',
+                                            s.stake.includes('Alta') ? 'text-green-400' :
+                                            s.stake === 'Normal' ? 'text-blue-400' : 'text-yellow-400'
+                                          )}>{s.stake}</span>
+                                        </div>
+                                        <div className="flex-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                          <div className={cn('h-full rounded-full',
+                                            s.confianca >= 75 ? 'bg-green-500' :
+                                            s.confianca >= 55 ? 'bg-yellow-500' : 'bg-orange-500'
+                                          )} style={{ width: `${s.confianca}%` }} />
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Contexto do jogo */}
+                        <div className="mt-2 p-3 bg-zinc-900/40 rounded border border-zinc-700/50">
+                          <p className="text-[10px] text-zinc-500 font-semibold mb-2">📋 Contexto do jogo</p>
                           <div className="space-y-1.5">
                             {(() => {
                               const insights: { text: string; type: 'positive' | 'negative' | 'neutral' | 'warning' }[] = [];
 
-                              // Ida/volta
                               if (analiseJ1.isVolta || analiseJ2.isVolta) {
-                                insights.push({ text: 'Jogo de volta — jogadores ja se conhecem. Resultado anterior pode influenciar postura (quem perdeu tende a atacar mais).', type: 'neutral' });
+                                insights.push({ text: 'Jogo de volta — jogadores ja se conhecem. Quem perdeu tende a atacar mais.', type: 'neutral' });
                               } else {
-                                insights.push({ text: 'Jogo de ida — primeiro confronto recente. Tendencia a jogo mais cauteloso no inicio.', type: 'neutral' });
+                                insights.push({ text: 'Jogo de ida — primeiro confronto recente.', type: 'neutral' });
                               }
 
-                              // Postura combinada
-                              if (analiseJ1.postura === 'OFENSIVO' && analiseJ2.postura === 'OFENSIVO') {
-                                insights.push({ text: 'Ambos ofensivos: alta chance de jogo aberto. Over e BTTS sao boas opcoes.', type: 'positive' });
-                              } else if (analiseJ1.postura === 'DEFENSIVO' && analiseJ2.postura === 'DEFENSIVO') {
-                                insights.push({ text: 'Ambos defensivos: jogo tende a ser travado. Under e mercado de poucos gols.', type: 'negative' });
-                              } else if (analiseJ1.postura === 'OFENSIVO_VULNERAVEL' || analiseJ2.postura === 'OFENSIVO_VULNERAVEL') {
-                                insights.push({ text: 'Jogador ofensivo mas vulneravel na defesa: jogo pode ter muitos gols dos dois lados. BTTS forte.', type: 'positive' });
-                              } else if (
-                                (analiseJ1.postura === 'OFENSIVO' && analiseJ2.postura === 'DEFENSIVO') ||
-                                (analiseJ1.postura === 'DEFENSIVO' && analiseJ2.postura === 'OFENSIVO')
-                              ) {
-                                const ofensivo = analiseJ1.postura === 'OFENSIVO' ? nomeJ1 : nomeJ2;
-                                const defensivo = analiseJ1.postura === 'DEFENSIVO' ? nomeJ1 : nomeJ2;
-                                insights.push({ text: `${ofensivo} ataca e ${defensivo} se fecha. Jogo pode ter poucos gols ou ${ofensivo} dominar.`, type: 'neutral' });
-                              }
-
-                              // Mudança tática
-                              if (analiseJ1.mudancaTatica === 'FORTE_INICIO' && analiseJ2.mudancaTatica === 'CRESCE_NO_JOGO') {
-                                insights.push({ text: `${nomeJ1} começa forte e ${nomeJ2} cresce no 2T. Gols distribuidos nos dois tempos.`, type: 'neutral' });
-                              } else if (analiseJ1.mudancaTatica === 'CRESCE_NO_JOGO' && analiseJ2.mudancaTatica === 'FORTE_INICIO') {
-                                insights.push({ text: `${nomeJ2} começa forte e ${nomeJ1} cresce no 2T. Gols distribuidos nos dois tempos.`, type: 'neutral' });
-                              } else if (analiseJ1.mudancaTatica === 'FORTE_INICIO' && analiseJ2.mudancaTatica === 'FORTE_INICIO') {
-                                insights.push({ text: 'Ambos começam forte: HT tende a ter mais gols. Over 0.5 HT e uma boa entrada.', type: 'positive' });
-                              } else if (analiseJ1.mudancaTatica === 'CRESCE_NO_JOGO' && analiseJ2.mudancaTatica === 'CRESCE_NO_JOGO') {
-                                insights.push({ text: 'Ambos crescem no 2T: jogo pode começar morno e esquentar. Gols tardios.', type: 'neutral' });
-                              }
-
-                              // ML e momentum
-                              if (analiseJ1.winRate >= 70 && analiseJ2.winRate <= 30) {
-                                insights.push({ text: `${nomeJ1} domina (${analiseJ1.winRate}% win) enquanto ${nomeJ2} esta em crise (${analiseJ2.winRate}%). Pressao pode gerar jogo aberto.`, type: 'positive' });
-                              } else if (analiseJ2.winRate >= 70 && analiseJ1.winRate <= 30) {
-                                insights.push({ text: `${nomeJ2} domina (${analiseJ2.winRate}% win) enquanto ${nomeJ1} esta em crise (${analiseJ1.winRate}%). Pressao pode gerar jogo aberto.`, type: 'positive' });
-                              } else if (analiseJ1.winRate <= 30 && analiseJ2.winRate <= 30) {
-                                insights.push({ text: 'Ambos em fase ruim. Jogo imprevisivel — cautela maxima.', type: 'warning' });
-                              }
-
-                              // Streaks cruzadas
                               if (analiseJ1.streakOver >= 3 && analiseJ2.streakOver >= 3) {
-                                insights.push({ text: `Ambos em sequencia Over (${nomeJ1}: ${analiseJ1.streakOver}x, ${nomeJ2}: ${analiseJ2.streakOver}x). Forte indicativo de jogo com muitos gols.`, type: 'positive' });
+                                insights.push({ text: `Ambos em sequencia Over (${nomeJ1}: ${analiseJ1.streakOver}x, ${nomeJ2}: ${analiseJ2.streakOver}x). Momento quente!`, type: 'positive' });
                               } else if (analiseJ1.streakUnder >= 3 && analiseJ2.streakUnder >= 3) {
-                                insights.push({ text: `Ambos em sequencia Under (${nomeJ1}: ${analiseJ1.streakUnder}x, ${nomeJ2}: ${analiseJ2.streakUnder}x). Jogo tende a ser fechado.`, type: 'negative' });
+                                insights.push({ text: `Ambos em sequencia Under. Jogo tende a ser fechado.`, type: 'negative' });
                               }
 
-                              // Tendência de gols cruzada
                               if (analiseJ1.tendenciaGols === 'SUBINDO' && analiseJ2.tendenciaGols === 'SUBINDO') {
-                                insights.push({ text: 'Ambos com media de gols subindo. Momento favoravel para Over.', type: 'positive' });
+                                insights.push({ text: 'Media de gols subindo para ambos. Momento favoravel.', type: 'positive' });
                               } else if (analiseJ1.tendenciaGols === 'CAINDO' && analiseJ2.tendenciaGols === 'CAINDO') {
-                                insights.push({ text: 'Ambos com media de gols caindo. Momento desfavoravel para Over.', type: 'negative' });
+                                insights.push({ text: 'Media de gols caindo para ambos. Cautela.', type: 'negative' });
                               }
 
-                              // Anomalias cruzadas
-                              if (analiseJ1.anomaliaPct >= 30 && analiseJ2.anomaliaPct >= 30) {
-                                insights.push({ text: `Ambos com alta taxa de anomalias (${nomeJ1}: ${analiseJ1.anomaliaPct}%, ${nomeJ2}: ${analiseJ2.anomaliaPct}%). Resultados podem fugir do padrao — risco elevado.`, type: 'warning' });
-                              } else if (analiseJ1.anomaliaPct >= 30 || analiseJ2.anomaliaPct >= 30) {
+                              if (analiseJ1.anomaliaPct >= 30 || analiseJ2.anomaliaPct >= 30) {
                                 const anomalo = analiseJ1.anomaliaPct >= 30 ? nomeJ1 : nomeJ2;
                                 const pctAn = analiseJ1.anomaliaPct >= 30 ? analiseJ1.anomaliaPct : analiseJ2.anomaliaPct;
-                                insights.push({ text: `${anomalo} tem ${pctAn}% de jogos anomalos (fora do padrao). Pode surpreender positiva ou negativamente.`, type: 'warning' });
+                                insights.push({ text: `${anomalo} com ${pctAn}% de anomalias — pode fugir do padrao.`, type: 'warning' });
                               }
 
-                              // Consistência cruzada
-                              if (analiseJ1.consistencia === 'ALTA' && analiseJ2.consistencia === 'ALTA') {
-                                insights.push({ text: 'Ambos consistentes — previsao mais confiavel. Aposte com mais seguranca.', type: 'positive' });
-                              } else if (analiseJ1.consistencia === 'BAIXA' && analiseJ2.consistencia === 'BAIXA') {
-                                insights.push({ text: 'Ambos imprevisíveis — qualquer resultado e possivel. Stake minima recomendada.', type: 'warning' });
-                              }
-
-                              // Placar favorito cruzado
-                              if (analiseJ1.placarMaisFreq.length > 0 && analiseJ2.placarMaisFreq.length > 0) {
-                                const p1 = analiseJ1.placarMaisFreq[0];
-                                const p2 = analiseJ2.placarMaisFreq[0];
-                                if (p1[1] >= 3 || p2[1] >= 3) {
-                                  insights.push({ text: `Padrao de placar forte: ${nomeJ1} repete ${p1[0]} (${p1[1]}x), ${nomeJ2} repete ${p2[0]} (${p2[1]}x). Considere esses placares na aposta.`, type: 'neutral' });
-                                }
+                              if (analiseJ1.consistencia === 'BAIXA' && analiseJ2.consistencia === 'BAIXA') {
+                                insights.push({ text: 'Ambos imprevisiveis. Stake minima recomendada.', type: 'warning' });
                               }
 
                               return insights.map((insight, i) => (
