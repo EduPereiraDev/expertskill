@@ -128,6 +128,7 @@ export interface RadarPartida {
   dataHora: string;
   status: 'AGENDADA' | 'AO_VIVO' | 'FINALIZADA' | 'CANCELADA';
   cenario: 'JOGO_FRACO' | 'OVER_SEGURANDO' | 'MELHOR_JOGO';
+  cenarioMsg?: string;
   classificacao: Classificacao;
   placar?: { home: number; away: number };
   indicadores: {

@@ -8,7 +8,7 @@ import { radarApi, RadarPartida, Liga, AnaliseDetalhada } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap } from 'lucide-react';
+import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap, Flame, ShieldAlert, Octagon } from 'lucide-react';
 
 const ligas: { value: Liga | 'TODAS'; label: string }[] = [
   { value: 'TODAS', label: 'Todas' },
@@ -22,6 +22,12 @@ const classificacaoConfig = {
   OPERAR: { label: 'Operar', bg: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-green-400', dotColor: 'bg-green-500', accent: 'border-l-green-500' },
   CAUTELA: { label: 'Cautela', bg: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-yellow-400', dotColor: 'bg-yellow-500', accent: 'border-l-yellow-500' },
   EVITAR: { label: 'Evitar', bg: 'bg-zinc-900', border: 'border-zinc-800', text: 'text-red-400', dotColor: 'bg-red-500', accent: 'border-l-red-500' },
+};
+
+const cenarioConfig = {
+  JOGO_FRACO: { label: 'Anti-Jogo', icon: Octagon, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20' },
+  OVER_SEGURANDO: { label: 'Over Segurando', icon: ShieldAlert, color: 'text-yellow-400', bg: 'bg-yellow-500/10', border: 'border-yellow-500/20' },
+  MELHOR_JOGO: { label: 'Jogo do Dia', icon: Flame, color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20' },
 };
 
 export default function RadarPage() {
@@ -177,6 +183,124 @@ export default function RadarPage() {
         </span>
       </div>
 
+      {/* Indicadores por Liga + Termometro */}
+      {partidas.length > 0 && (() => {
+        const ligasAtivas = ['GT_12MIN', 'VOLTA_6MIN', 'GT_8MIN', 'H2H'] as Liga[];
+        const ligaStats = ligasAtivas.map(liga => {
+          const jogos = partidas.filter(p => p.liga === liga);
+          if (jogos.length === 0) return null;
+          const mediaGols = jogos.reduce((s, p) => s + p.indicadores.mediaTotal, 0) / jogos.length;
+          const overMedio = jogos.reduce((s, p) => s + p.indicadores.overMedio, 0) / jogos.length;
+          const jogosFracos = jogos.filter(p => p.cenario === 'JOGO_FRACO').length;
+          const jogosBons = jogos.filter(p => p.cenario === 'MELHOR_JOGO').length;
+          const pctFracos = Math.round((jogosFracos / jogos.length) * 100);
+          const status = mediaGols >= 5 && pctFracos < 30 ? 'QUENTE'
+            : pctFracos >= 50 ? 'FRIO'
+            : 'MISTO';
+          return { liga, jogos: jogos.length, mediaGols, overMedio, jogosFracos, jogosBons, pctFracos, status };
+        }).filter(Boolean) as any[];
+
+        // Termometro geral
+        const totalJogos = partidas.length;
+        const mediaGeralGols = partidas.reduce((s, p) => s + p.indicadores.mediaTotal, 0) / totalJogos;
+        const pctOperar = Math.round((partidas.filter(p => p.classificacao === 'OPERAR').length / totalJogos) * 100);
+        const pctEvitar = Math.round((partidas.filter(p => p.classificacao === 'EVITAR').length / totalJogos) * 100);
+        const termometro = pctOperar >= 40 ? 'OPERAR' : pctEvitar >= 50 ? 'EVITAR' : 'CAUTELA';
+        const termometroLabel = termometro === 'OPERAR' ? 'Mercado Quente' : termometro === 'EVITAR' ? 'Grade Suja' : 'Mercado Misto';
+        const termometroPct = termometro === 'OPERAR' ? Math.min(100, pctOperar + 30) : termometro === 'EVITAR' ? Math.max(10, 100 - pctEvitar) : 50;
+
+        return (
+          <div className="space-y-3">
+            {/* Termometro do Mercado */}
+            <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-medium text-zinc-400">Termometro do Mercado</span>
+                <span className={cn('text-xs font-bold px-2 py-0.5 rounded',
+                  termometro === 'OPERAR' ? 'text-green-400 bg-green-500/10' :
+                  termometro === 'EVITAR' ? 'text-red-400 bg-red-500/10' :
+                  'text-yellow-400 bg-yellow-500/10'
+                )}>{termometroLabel}</span>
+              </div>
+              <div className="h-2.5 bg-zinc-800 rounded-full overflow-hidden">
+                <div className={cn('h-full rounded-full transition-all',
+                  termometro === 'OPERAR' ? 'bg-gradient-to-r from-green-600 to-green-400' :
+                  termometro === 'EVITAR' ? 'bg-gradient-to-r from-red-600 to-red-400' :
+                  'bg-gradient-to-r from-yellow-600 to-yellow-400'
+                )} style={{ width: `${termometroPct}%` }} />
+              </div>
+              <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
+                <span>Evitar</span>
+                <span>Media {mediaGeralGols.toFixed(1)} gols | {pctOperar}% Operar | {pctEvitar}% Evitar</span>
+                <span>Operar</span>
+              </div>
+            </div>
+
+            {/* Indicadores por Liga */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {ligaStats.map(ls => {
+                const ligaLabel = ligas.find(l => l.value === ls.liga)?.label || ls.liga;
+                return (
+                  <div key={ls.liga} className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-medium text-zinc-300">{ligaLabel}</span>
+                      {ls.status === 'QUENTE' && <Flame className="h-3.5 w-3.5 text-orange-400" />}
+                      {ls.status === 'MISTO' && <ShieldAlert className="h-3.5 w-3.5 text-yellow-400" />}
+                      {ls.status === 'FRIO' && <Octagon className="h-3.5 w-3.5 text-red-400" />}
+                    </div>
+                    <div className="text-lg font-bold text-white">{ls.mediaGols.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal ml-0.5">gols</span></div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px]">
+                      <span className="text-zinc-500">{ls.jogos}j</span>
+                      <span className={cn(ls.overMedio >= 65 ? 'text-green-400' : ls.overMedio >= 45 ? 'text-yellow-400' : 'text-red-400')}>
+                        {ls.overMedio.toFixed(0)}% Over
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Feed de Oportunidades Imediatas */}
+            {(() => {
+              const oportunidades = partidas.filter(p =>
+                p.cenario === 'MELHOR_JOGO' || p.cenario === 'OVER_SEGURANDO'
+              ).slice(0, 3);
+              if (oportunidades.length === 0) return null;
+              return (
+                <div className="p-3 bg-gradient-to-r from-purple-900/20 to-zinc-900 rounded-lg border border-purple-500/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="h-4 w-4 text-purple-400" />
+                    <span className="text-xs font-semibold text-purple-400">OPORTUNIDADES IMEDIATAS</span>
+                  </div>
+                  <div className="space-y-2">
+                    {oportunidades.map(p => {
+                      const cen = cenarioConfig[p.cenario];
+                      const CenIcon = cen.icon;
+                      return (
+                        <div key={p.id} className={cn('flex items-center justify-between p-2 rounded border', cen.bg, cen.border)}>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <CenIcon className={cn('h-4 w-4 flex-shrink-0', cen.color)} />
+                            <div className="min-w-0">
+                              <p className="text-xs text-white truncate">{p.jogador1.nome.match(/\(([^)]+)\)/)?.[1] || p.jogador1.nome} vs {p.jogador2.nome.match(/\(([^)]+)\)/)?.[1] || p.jogador2.nome}</p>
+                              <p className="text-[10px] text-zinc-500">{p.cenarioMsg || cen.label}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {p.placar && <span className="text-xs font-mono text-white">{p.placar.home}-{p.placar.away}</span>}
+                            <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 border-purple-500/30 text-purple-400" onClick={() => abrirAnalise(p.id)} disabled={loadingAnalise}>
+                              Analisar
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+        );
+      })()}
+
       {/* Error */}
       {error && (
         <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400">
@@ -260,10 +384,23 @@ export default function RadarPage() {
                     </div>
                   </div>
 
+                  {/* Cenario */}
+                  {(() => {
+                    const cen = cenarioConfig[partida.cenario];
+                    const CenIcon = cen.icon;
+                    return (
+                      <div className={cn('flex items-center gap-1.5 px-2 py-1 rounded text-[10px] mb-2', cen.bg, 'border', cen.border)}>
+                        <CenIcon className={cn('h-3 w-3', cen.color)} />
+                        <span className={cn('font-medium', cen.color)}>{cen.label}</span>
+                        {partida.cenarioMsg && <span className="text-zinc-500 truncate ml-1">— {partida.cenarioMsg.split('.')[0]}</span>}
+                      </div>
+                    );
+                  })()}
+
                   {/* Indicadores - Linha única */}
                   <div className="flex items-center justify-between pt-3 border-t border-zinc-800/50 text-xs">
                     <div className="flex items-center gap-4">
-                      <span className="text-zinc-500">Média: <span className="text-zinc-300 font-medium">{partida.indicadores.mediaTotal.toFixed(1)}</span></span>
+                      <span className="text-zinc-500">Media: <span className="text-zinc-300 font-medium">{partida.indicadores.mediaTotal.toFixed(1)}</span></span>
                       <span className="text-zinc-500">Over: <span className="text-zinc-300 font-medium">{partida.indicadores.overMedio.toFixed(0)}%</span></span>
                     </div>
                     <span className={cn('font-semibold', config.text)}>

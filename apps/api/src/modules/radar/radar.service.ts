@@ -23,6 +23,7 @@ export interface RadarPartida {
   dataHora: Date;
   status: StatusPartida;
   cenario: Cenario;
+  cenarioMsg: string;
   classificacao: 'OPERAR' | 'CAUTELA' | 'EVITAR';
   placar?: { home: number; away: number };
   indicadores: {
@@ -192,8 +193,18 @@ export class RadarService {
     const mediaTotal = jogador1.mediaGolsFT + jogador2.mediaGolsFT;
     const overMedio = (jogador1.percentualOver + jogador2.percentualOver) / 2;
     const probabilidadeOver25 = this.calcularProbabilidadeOver(mediaTotal, overMedio);
-    
     const classificacao = this.classificarPartida(mediaTotal, overMedio, probabilidadeOver25);
+
+    // Deteccao dinamica de cenario com mensagem
+    const placarHome = partida.golsFT1 ?? 0;
+    const placarAway = partida.golsFT2 ?? 0;
+    const totalGolsAtual = placarHome + placarAway;
+    const isAoVivo = partida.status === 'AO_VIVO';
+    const pct0x0 = (jogador1.percentual0x0 + jogador2.percentual0x0) / 2;
+
+    const { cenario, cenarioMsg } = this.detectarCenario(
+      mediaTotal, overMedio, pct0x0, totalGolsAtual, isAoVivo, classificacao,
+    );
 
     return {
       id: partida.id,
@@ -212,17 +223,63 @@ export class RadarService {
       liga: partida.liga,
       dataHora: partida.dataHora,
       status: partida.status,
-      cenario: partida.cenario,
+      cenario,
+      cenarioMsg,
       classificacao,
-      placar: partida.status === 'AO_VIVO' ? {
-        home: partida.golsFT1 ?? 0,
-        away: partida.golsFT2 ?? 0,
-      } : undefined,
+      placar: isAoVivo ? { home: placarHome, away: placarAway } : undefined,
       indicadores: {
         mediaTotal,
         overMedio,
         probabilidadeOver25,
       },
+    };
+  }
+
+  private detectarCenario(
+    mediaTotal: number,
+    overMedio: number,
+    pct0x0: number,
+    totalGolsAtual: number,
+    isAoVivo: boolean,
+    classificacao: string,
+  ): { cenario: Cenario; cenarioMsg: string } {
+    // CENARIO 2: Over Segurando — goleadores em 0x0 ao vivo (oportunidade oculta)
+    if (isAoVivo && totalGolsAtual <= 1 && mediaTotal >= 5 && overMedio >= 65) {
+      return {
+        cenario: Cenario.OVER_SEGURANDO,
+        cenarioMsg: `Jogo de Over travado. Media ${mediaTotal.toFixed(1)} gols mas placar ${totalGolsAtual}. Possivel quebra de padrao.`,
+      };
+    }
+
+    // CENARIO 3: Jogo do Dia — confronto de titãs
+    if (mediaTotal >= 6 && overMedio >= 75) {
+      return {
+        cenario: Cenario.MELHOR_JOGO,
+        cenarioMsg: `Jogo Forte. Media ${mediaTotal.toFixed(1)} gols, ${overMedio.toFixed(0)}% Over. Alta probabilidade de Over HT/FT.`,
+      };
+    }
+
+    // CENARIO 1: Anti-Jogo — jogo travado
+    if (mediaTotal < 3 || overMedio < 40 || pct0x0 >= 25) {
+      return {
+        cenario: Cenario.JOGO_FRACO,
+        cenarioMsg: pct0x0 >= 25
+          ? `Alerta: Jogo Travado. ${pct0x0.toFixed(0)}% de chance de 0x0. Tendencia Under.`
+          : `Alerta: Media baixa (${mediaTotal.toFixed(1)} gols). Tendencia Under ou 0x0.`,
+      };
+    }
+
+    // Cenario intermediario
+    if (classificacao === 'OPERAR') {
+      return {
+        cenario: Cenario.MELHOR_JOGO,
+        cenarioMsg: `Bom confronto. Media ${mediaTotal.toFixed(1)} gols com ${overMedio.toFixed(0)}% Over.`,
+      };
+    }
+
+    return {
+      cenario: Cenario.OVER_SEGURANDO,
+      cenarioMsg: `Confronto moderado. Media ${mediaTotal.toFixed(1)} gols. Avalie antes de entrar.`,
     };
   }
 
