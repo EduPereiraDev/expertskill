@@ -391,8 +391,8 @@ export default function EntradasPage() {
           <div className="flex gap-2">
             {([
               { value: 'todas', label: 'Todas' },
-              { value: 'ao_vivo', label: '🔴 Ao Vivo' },
-              { value: 'pre_live', label: '📋 Pré-Live' },
+              { value: 'ao_vivo', label: 'Ao Vivo' },
+              { value: 'pre_live', label: 'Pre-Live' },
             ] as const).map((f) => (
               <button
                 key={f.value}
