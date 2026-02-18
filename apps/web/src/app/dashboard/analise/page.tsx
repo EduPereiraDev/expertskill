@@ -120,7 +120,25 @@ const JogadorCard = ({ jogador, tipo, onClickJogador }: { jogador: JogadorRankin
 
 const ConfrontoCard = ({ confronto, destaque }: { confronto: ConfrontoAnalise; destaque?: 'over' | 'under' | '0x0' }) => {
   const hora = new Date(confronto.dataHora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  
+
+  // Calcular linha com valor para operar
+  const mediaHT = (confronto.jogador1.mediaGolsFT + confronto.jogador2.mediaGolsFT) / 2;
+  const linhasOver: { linha: string; prob: number }[] = [];
+  const linhasUnder: { linha: string; prob: number }[] = [];
+
+  if (confronto.mediaTotal >= 6) linhasOver.push({ linha: 'Over 2.5 FT', prob: confronto.probabilidadeOver25 });
+  if (confronto.mediaTotal >= 4.5) linhasOver.push({ linha: 'Over 1.5 FT', prob: Math.min(99, confronto.probabilidadeOver25 + 20) });
+  if (confronto.mediaTotal >= 3) linhasOver.push({ linha: 'Over 0.5 HT', prob: Math.min(99, confronto.probabilidadeOver25 + 10) });
+  if (confronto.mediaTotal >= 5) linhasOver.push({ linha: 'Over 1.5 HT', prob: Math.max(30, confronto.probabilidadeOver25 - 15) });
+
+  if (confronto.mediaTotal < 3.5) linhasUnder.push({ linha: 'Under 2.5 FT', prob: 100 - confronto.probabilidadeOver25 });
+  if (confronto.mediaTotal < 4.5) linhasUnder.push({ linha: 'Under 3.5 FT', prob: Math.min(95, 100 - confronto.probabilidadeOver25 + 15) });
+  if (confronto.probabilidade0x0 >= 15) linhasUnder.push({ linha: 'Under 0.5 HT', prob: Math.min(80, confronto.probabilidade0x0 * 2.5) });
+
+  const melhorOver = linhasOver.sort((a, b) => b.prob - a.prob)[0];
+  const melhorUnder = linhasUnder.sort((a, b) => b.prob - a.prob)[0];
+  const linhaRecomendada = destaque === 'under' ? (melhorUnder || melhorOver) : (melhorOver || melhorUnder);
+
   return (
     <div className={cn(
       'p-4 rounded-lg border',
@@ -155,7 +173,7 @@ const ConfrontoCard = ({ confronto, destaque }: { confronto: ConfrontoAnalise; d
       <div className="grid grid-cols-3 gap-2 text-center text-sm">
         <div className="p-2 rounded bg-zinc-800/50">
           <p className="text-lg font-bold text-white">{confronto.mediaTotal.toFixed(1)}</p>
-          <p className="text-xs text-zinc-500">Média Total</p>
+          <p className="text-xs text-zinc-500">Media Total</p>
         </div>
         <div className="p-2 rounded bg-zinc-800/50">
           <p className={cn('text-lg font-bold', confronto.probabilidadeOver25 >= 60 ? 'text-green-400' : 'text-zinc-400')}>
@@ -170,6 +188,37 @@ const ConfrontoCard = ({ confronto, destaque }: { confronto: ConfrontoAnalise; d
           <p className="text-xs text-zinc-500">0x0</p>
         </div>
       </div>
+
+      {/* Linha recomendada para operar */}
+      {linhaRecomendada && (
+        <div className={cn('mt-3 p-2.5 rounded-lg border text-center',
+          destaque === 'under' ? 'bg-blue-500/10 border-blue-500/30' : 'bg-green-500/10 border-green-500/30'
+        )}>
+          <p className="text-[10px] text-zinc-400 mb-0.5">Linha com valor</p>
+          <p className={cn('text-sm font-bold', destaque === 'under' ? 'text-blue-400' : 'text-green-400')}>
+            {linhaRecomendada.linha}
+          </p>
+          <p className="text-[10px] text-zinc-500">{linhaRecomendada.prob.toFixed(0)}% probabilidade</p>
+        </div>
+      )}
+
+      {/* Todas as linhas disponiveis */}
+      {(linhasOver.length > 0 || linhasUnder.length > 0) && (
+        <div className="mt-2 grid grid-cols-2 gap-1.5">
+          {linhasOver.slice(0, 2).map(l => (
+            <div key={l.linha} className="flex items-center justify-between px-2 py-1 rounded bg-green-500/5 border border-green-500/10">
+              <span className="text-[10px] text-green-400">{l.linha}</span>
+              <span className="text-[10px] font-bold text-green-400">{l.prob.toFixed(0)}%</span>
+            </div>
+          ))}
+          {linhasUnder.slice(0, 2).map(l => (
+            <div key={l.linha} className="flex items-center justify-between px-2 py-1 rounded bg-blue-500/5 border border-blue-500/10">
+              <span className="text-[10px] text-blue-400">{l.linha}</span>
+              <span className="text-[10px] font-bold text-blue-400">{l.prob.toFixed(0)}%</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
