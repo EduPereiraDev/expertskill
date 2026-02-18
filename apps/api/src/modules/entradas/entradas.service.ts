@@ -11,6 +11,7 @@ export interface EntradaExpert {
     jogador2: string;
     liga: string;
     dataHora: Date;
+    statusPartida: string;
   };
   mercado: string;
   odd: number;
@@ -94,6 +95,7 @@ export class EntradasService {
           jogador2: partida.jogador2.nome,
           liga: partida.liga,
           dataHora: partida.dataHora,
+          statusPartida: partida.status,
         },
         mercado,
         odd,

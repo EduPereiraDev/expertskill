@@ -233,6 +233,7 @@ export interface EntradaExpert {
     jogador2: string;
     liga: string;
     dataHora: string;
+    statusPartida?: string;
   };
   mercado: string;
   odd: number;

@@ -51,6 +51,7 @@ export default function EntradasPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [tab, setTab] = useState<'expert' | 'minhas'>('expert');
+  const [filtroExpert, setFiltroExpert] = useState<'todas' | 'ao_vivo' | 'pre_live'>('todas');
   
   // Modal de registro manual
   const [banca, setBanca] = useState<Banca | null>(null);
@@ -386,17 +387,44 @@ export default function EntradasPage() {
       ) : tab === 'expert' ? (
         /* Entradas Expert */
         <div className="space-y-4">
-          {entradasExpert.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <p className="text-zinc-400">Nenhuma entrada disponível no momento</p>
-                <p className="text-sm text-zinc-500 mt-2">Aguarde novas partidas classificadas como OPERAR</p>
-              </CardContent>
-            </Card>
-          ) : (
-            entradasExpert.map((entrada) => {
+          {/* Filtro Ao Vivo / Pré-Live */}
+          <div className="flex gap-2">
+            {([
+              { value: 'todas', label: 'Todas' },
+              { value: 'ao_vivo', label: '🔴 Ao Vivo' },
+              { value: 'pre_live', label: '📋 Pré-Live' },
+            ] as const).map((f) => (
+              <button
+                key={f.value}
+                onClick={() => setFiltroExpert(f.value)}
+                className={cn(
+                  'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                  filtroExpert === f.value
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                )}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+          {(() => {
+            const filtradas = entradasExpert.filter((e) => {
+              if (filtroExpert === 'todas') return true;
+              if (filtroExpert === 'ao_vivo') return e.partida.statusPartida === 'AO_VIVO';
+              return e.partida.statusPartida === 'AGENDADA';
+            });
+            if (filtradas.length === 0) return (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <p className="text-zinc-400">Nenhuma entrada disponível no momento</p>
+                  <p className="text-sm text-zinc-500 mt-2">Aguarde novas partidas classificadas como OPERAR</p>
+                </CardContent>
+              </Card>
+            );
+            return filtradas.map((entrada) => {
               const config = confiancaConfig[entrada.confianca];
-              
+              const isAoVivo = entrada.partida.statusPartida === 'AO_VIVO';
               return (
                 <Card key={entrada.id} className={cn(config.bg, config.border)}>
                   <CardContent className="p-6">
@@ -407,6 +435,16 @@ export default function EntradasPage() {
                           <span className={cn('text-xs px-2 py-0.5 rounded font-medium', config.bg, config.text)}>
                             {config.label}
                           </span>
+                          {isAoVivo && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-medium flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" /> AO VIVO
+                            </span>
+                          )}
+                          {!isAoVivo && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-medium">
+                              PRE-LIVE
+                            </span>
+                          )}
                           <span className="text-xs text-zinc-500">
                             {formatTime(entrada.partida.dataHora)} • {formatLiga(entrada.partida.liga)}
                           </span>
@@ -437,8 +475,8 @@ export default function EntradasPage() {
                   </CardContent>
                 </Card>
               );
-            })
-          )}
+            });
+          })()}
         </div>
       ) : (
         /* Minhas Entradas */
