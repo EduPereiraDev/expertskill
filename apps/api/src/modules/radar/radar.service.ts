@@ -96,8 +96,9 @@ export class RadarService {
 
   async getPartidas(liga?: Liga, status?: StatusPartida): Promise<RadarPartida[]> {
     const agora = new Date();
-    // Só partidas AO_VIVO que começaram há menos de 10 min (eSoccer dura 6-12 min)
-    const limiteAoVivo = new Date(agora.getTime() - 10 * 60 * 1000);
+    // Timeout por liga: Volta 6min=8min, Battle 8min/H2H=10min, GT 12min=14min
+    // Usar o maior (14min) como filtro geral — a finalização por liga já cuida do resto
+    const limiteAoVivo = new Date(agora.getTime() - 14 * 60 * 1000);
 
     const partidas = await this.prisma.partida.findMany({
       where: {

@@ -84,22 +84,32 @@ export class Bet365SyncService implements OnModuleInit {
   }
 
   private async finalizarPartidasAntigas() {
-    // Partidas AO_VIVO com mais de 10 minutos desde o início devem ser finalizadas
-    // E-soccer tem partidas de 6-12 minutos, então 10 min cobre a maioria
-    const vinteMinutosAtras = new Date(Date.now() - 10 * 60 * 1000);
-    
-    const result = await this.prisma.partida.updateMany({
-      where: {
-        status: StatusPartida.AO_VIVO,
-        dataHora: { lt: vinteMinutosAtras },
-      },
-      data: {
-        status: StatusPartida.FINALIZADA,
-      },
-    });
+    // Timeout por liga: cada liga tem duração diferente
+    const timeouts: { liga: Liga; minutos: number }[] = [
+      { liga: Liga.VOLTA_6MIN, minutos: 8 },
+      { liga: Liga.GT_8MIN, minutos: 10 },
+      { liga: Liga.H2H, minutos: 10 },
+      { liga: Liga.GT_12MIN, minutos: 14 },
+    ];
 
-    if (result.count > 0) {
-      this.logger.log(`Finalizadas ${result.count} partidas antigas que estavam como AO_VIVO`);
+    let totalFinalizado = 0;
+    for (const { liga, minutos } of timeouts) {
+      const limite = new Date(Date.now() - minutos * 60 * 1000);
+      const result = await this.prisma.partida.updateMany({
+        where: {
+          status: StatusPartida.AO_VIVO,
+          liga,
+          dataHora: { lt: limite },
+        },
+        data: {
+          status: StatusPartida.FINALIZADA,
+        },
+      });
+      totalFinalizado += result.count;
+    }
+
+    if (totalFinalizado > 0) {
+      this.logger.log(`Finalizadas ${totalFinalizado} partidas antigas que estavam como AO_VIVO`);
     }
   }
 

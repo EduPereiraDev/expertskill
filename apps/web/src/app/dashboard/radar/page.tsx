@@ -193,7 +193,7 @@ export default function RadarPage() {
       ) : partidas.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-zinc-400">Nenhuma partida encontrada nas próximas 2 horas</p>
+            <p className="text-zinc-400">Nenhuma partida ao vivo no momento</p>
           </CardContent>
         </Card>
       ) : (
