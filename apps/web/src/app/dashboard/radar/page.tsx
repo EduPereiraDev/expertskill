@@ -433,20 +433,39 @@ export default function RadarPage() {
                     const j2VsPlayer = j2.ultimasPartidas.filter((p: any) => (p.adversario.match(/\(([^)]+)\)/)?.[1] || '').toLowerCase() === nomeJ1.toLowerCase());
                     const statsPlayer = calcStats([...j1VsPlayer, ...j2VsPlayer]);
                     const h2hJogos = a.h2h.confrontosDiretos || [];
-                    const placaresH2Hx = h2hJogos.map((p: any) => `${p.golsPro}-${p.golsContra}`);
+                    // Complementar H2H com confrontos por nickname (mesmo jogador em times diferentes)
+                    const j1VsJ2ByNick = j1.ultimasPartidas.filter((p: any) => {
+                      const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
+                      return adv.toLowerCase() === nomeJ2.toLowerCase();
+                    });
+                    const j2VsJ1ByNick = j2.ultimasPartidas.filter((p: any) => {
+                      const adv = p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario;
+                      return adv.toLowerCase() === nomeJ1.toLowerCase();
+                    });
+                    // Unificar: usar H2H do backend + confrontos por nickname (sem duplicatas)
+                    const h2hIds = new Set(h2hJogos.map((p: any) => p.id));
+                    const confrontosNick = [...j1VsJ2ByNick, ...j2VsJ1ByNick].filter((p: any) => !h2hIds.has(p.id));
+                    const todosConfrontos = [
+                      ...h2hJogos,
+                      ...confrontosNick.map((p: any) => ({ ...p, totalGols: p.totalGols ?? ((p.golsPro || 0) + (p.golsContra || 0)) })),
+                    ].sort((a: any, b: any) => new Date(a.data || 0).getTime() - new Date(b.data || 0).getTime());
+                    const placaresH2Hx = todosConfrontos.map((p: any) => `${p.golsPro}-${p.golsContra}`);
                     const placarCount: Record<string, number> = {};
                     placaresH2Hx.forEach((pl: string) => { placarCount[pl] = (placarCount[pl] || 0) + 1; });
                     const placaresRepetidos = Object.entries(placarCount).filter(([_, c]) => c >= 2);
                     const temTroia = placaresRepetidos.length > 0;
-                    const idaVolta = h2hJogos.length >= 2 ? (() => {
-                      const ida = h2hJogos[h2hJogos.length - 1];
-                      const volta = h2hJogos[h2hJogos.length - 2];
+                    const idaVolta = todosConfrontos.length >= 2 ? (() => {
+                      const ida = todosConfrontos[todosConfrontos.length - 2];
+                      const volta = todosConfrontos[todosConfrontos.length - 1];
                       if (!ida || !volta) return null;
-                      return { tipo: 'ambos' as const, idaGols: ida.totalGols, voltaGols: volta.totalGols, idaOver: ida.totalGols > 2, voltaOver: volta.totalGols > 2 };
-                    })() : h2hJogos.length === 1 ? (() => {
-                      const ida = h2hJogos[0];
+                      const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
+                      const voltaGols = volta.totalGols ?? ((volta.golsPro || 0) + (volta.golsContra || 0));
+                      return { tipo: 'ambos' as const, idaGols, voltaGols, idaOver: idaGols > 2, voltaOver: voltaGols > 2 };
+                    })() : todosConfrontos.length === 1 ? (() => {
+                      const ida = todosConfrontos[0];
                       if (!ida) return null;
-                      return { tipo: 'somente_ida' as const, idaGols: ida.totalGols, voltaGols: 0, idaOver: ida.totalGols > 2, voltaOver: false };
+                      const idaGols = ida.totalGols ?? ((ida.golsPro || 0) + (ida.golsContra || 0));
+                      return { tipo: 'somente_ida' as const, idaGols, voltaGols: 0, idaOver: idaGols > 2, voltaOver: false };
                     })() : null;
                     const StatsCard = ({ title, stats, color }: { title: string; stats: any; color: string }) => (
                       <div className={cn('p-3 bg-zinc-900/40 rounded border', stats ? 'border-zinc-800' : 'border-zinc-800/50')}>
@@ -566,7 +585,7 @@ export default function RadarPage() {
                             </div>
                             );
                           })()}
-                          {!idaVolta && h2hJogos.length === 0 && (
+                          {!idaVolta && todosConfrontos.length === 0 && (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
                               <p className="text-[10px] text-zinc-600 mb-1">Ida vs Volta</p>
                               <p className="text-[10px] text-zinc-500">Primeiro confronto entre esses jogadores. Sem historico de ida/volta.</p>
