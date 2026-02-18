@@ -8,7 +8,7 @@ import { entradasApi, Entrada, EstatisticasGerais, ResultadoEntrada } from '@/li
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { History, CheckCircle, XCircle, BarChart3, TrendingUp, Target, Download, Trash2, MoreVertical } from 'lucide-react';
+import { History, CheckCircle, XCircle, BarChart3, TrendingUp, Target, Download, Trash2, MoreVertical, DollarSign } from 'lucide-react';
 
 export default function HistoricoPage() {
   const { user } = useAuthStore();
@@ -299,6 +299,8 @@ export default function HistoricoPage() {
                   ? 'bg-green-500/5 border-green-500/20'
                   : entrada.resultado === 'RED'
                   ? 'bg-red-500/5 border-red-500/20'
+                  : entrada.resultado === 'REEMBOLSO'
+                  ? 'bg-zinc-700/20 border-zinc-500/20'
                   : 'bg-zinc-800/50'
               )}
             >
@@ -308,6 +310,8 @@ export default function HistoricoPage() {
                   <div className="flex items-center gap-3">
                     {entrada.resultado === 'GREEN' ? (
                       <CheckCircle className="h-6 w-6 text-green-400" />
+                    ) : entrada.resultado === 'REEMBOLSO' ? (
+                      <DollarSign className="h-6 w-6 text-zinc-400" />
                     ) : (
                       <XCircle className="h-6 w-6 text-red-400" />
                     )}
@@ -339,11 +343,10 @@ export default function HistoricoPage() {
                     <p
                       className={cn(
                         'text-lg font-bold',
-                        (entrada.lucro || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                        entrada.resultado === 'REEMBOLSO' ? 'text-zinc-400' : (entrada.lucro || 0) >= 0 ? 'text-green-400' : 'text-red-400'
                       )}
                     >
-                      {(entrada.lucro || 0) >= 0 ? '+' : ''}
-                      {formatCurrency(entrada.lucro || 0)}
+                      {entrada.resultado === 'REEMBOLSO' ? 'R$ 0,00' : `${(entrada.lucro || 0) >= 0 ? '+' : ''}${formatCurrency(entrada.lucro || 0)}`}
                     </p>
                   </div>
 

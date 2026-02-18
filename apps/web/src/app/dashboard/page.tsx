@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
 import { bancaApi, Banca } from '@/lib/api';
 import Link from 'next/link';
-import { LayoutDashboard, Wallet, Radio, Zap, ArrowRight, TrendingUp, Target, Award, BarChart3, Clock, CheckCircle, XCircle, Flame } from 'lucide-react';
+import { LayoutDashboard, Wallet, Radio, Zap, ArrowRight, TrendingUp, Target, Award, BarChart3, Clock, CheckCircle, XCircle, Flame, DollarSign } from 'lucide-react';
 import { entradasApi, EstatisticasGerais, UltimaEntrada, HeatmapHorarios, EvolucaoBanca } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { DashboardSkeleton } from '@/components/dashboard/dashboard-skeleton';
@@ -577,12 +577,16 @@ export default function DashboardPage() {
                     "flex items-center justify-between p-3 rounded-lg border transition-all",
                     entrada.resultado === 'GREEN' 
                       ? "bg-green-500/10 border-green-500/30" 
+                      : entrada.resultado === 'REEMBOLSO'
+                      ? "bg-zinc-700/30 border-zinc-500/30"
                       : "bg-red-500/10 border-red-500/30"
                   )}
                 >
                   <div className="flex items-center gap-3">
                     {entrada.resultado === 'GREEN' ? (
                       <CheckCircle className="h-5 w-5 text-green-400" />
+                    ) : entrada.resultado === 'REEMBOLSO' ? (
+                      <DollarSign className="h-5 w-5 text-zinc-400" />
                     ) : (
                       <XCircle className="h-5 w-5 text-red-400" />
                     )}
@@ -596,9 +600,9 @@ export default function DashboardPage() {
                   <div className="text-right">
                     <p className={cn(
                       "text-sm font-bold",
-                      entrada.lucro >= 0 ? "text-green-400" : "text-red-400"
+                      entrada.resultado === 'REEMBOLSO' ? "text-zinc-400" : entrada.lucro >= 0 ? "text-green-400" : "text-red-400"
                     )}>
-                      {entrada.lucro >= 0 ? '+' : ''}{formatCurrency(entrada.lucro)}
+                      {entrada.resultado === 'REEMBOLSO' ? 'R$ 0,00' : `${entrada.lucro >= 0 ? '+' : ''}${formatCurrency(entrada.lucro)}`}
                     </p>
                     <p className="text-[10px] text-zinc-500">
                       {new Date(entrada.data).toLocaleDateString('pt-BR')}

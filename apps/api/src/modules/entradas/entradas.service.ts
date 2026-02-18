@@ -280,14 +280,17 @@ export class EntradasService {
 
     const greens = entradas.filter(e => e.resultado === ResultadoEntrada.GREEN).length;
     const reds = entradas.filter(e => e.resultado === ResultadoEntrada.RED).length;
+    const reembolsos = entradas.filter(e => e.resultado === ResultadoEntrada.REEMBOLSO).length;
     const lucroTotal = entradas.reduce((acc, e) => acc + (e.lucro || 0), 0);
+    const totalSemReembolso = greens + reds;
 
     return {
       total: entradas.length,
       greens,
       reds,
+      reembolsos,
       lucroTotal,
-      taxaAcerto: entradas.length > 0 ? (greens / entradas.length) * 100 : 0,
+      taxaAcerto: totalSemReembolso > 0 ? (greens / totalSemReembolso) * 100 : 0,
     };
   }
 
@@ -330,8 +333,10 @@ export class EntradasService {
 
     const greens = entradas.filter(e => e.resultado === ResultadoEntrada.GREEN).length;
     const reds = entradas.filter(e => e.resultado === ResultadoEntrada.RED).length;
+    const reembolsos = entradas.filter(e => e.resultado === ResultadoEntrada.REEMBOLSO).length;
     const lucroTotal = entradas.reduce((acc, e) => acc + (e.lucro || 0), 0);
     const stakeTotal = entradas.reduce((acc, e) => acc + e.stake, 0);
+    const totalSemReembolso = greens + reds;
 
     // Calcular sequências
     let maiorSequenciaGreens = 0;
@@ -359,10 +364,11 @@ export class EntradasService {
       total: entradas.length,
       greens,
       reds,
+      reembolsos,
       lucroTotal,
       stakeTotal,
       roi: stakeTotal > 0 ? (lucroTotal / stakeTotal) * 100 : 0,
-      taxaAcerto: entradas.length > 0 ? (greens / entradas.length) * 100 : 0,
+      taxaAcerto: totalSemReembolso > 0 ? (greens / totalSemReembolso) * 100 : 0,
       maiorSequenciaGreens,
       maiorSequenciaReds,
     };

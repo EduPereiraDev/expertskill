@@ -294,7 +294,7 @@ export default function EntradasPage() {
 
       {/* Estatísticas do Dia */}
       {estatisticas && (
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-5">
           <Card>
             <CardContent className="p-4">
               <p className="text-sm text-zinc-400">Entradas Hoje</p>
@@ -315,7 +315,13 @@ export default function EntradasPage() {
           </Card>
           <Card>
             <CardContent className="p-4">
-              <p className="text-sm text-zinc-400">Lucro/Prejuízo</p>
+              <p className="text-sm text-zinc-400">Reembolsos</p>
+              <p className="text-2xl font-bold text-zinc-400">{(estatisticas as any).reembolsos || 0}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <p className="text-sm text-zinc-400">Lucro/Prejuizo</p>
               <p className={cn(
                 'text-2xl font-bold',
                 estatisticas.lucroTotal >= 0 ? 'text-green-400' : 'text-red-400'
@@ -498,6 +504,8 @@ export default function EntradasPage() {
                   isFinalizada 
                     ? entrada.resultado === 'GREEN' 
                       ? 'bg-green-500/10 border-green-500/30' 
+                      : entrada.resultado === 'REEMBOLSO'
+                      ? 'bg-zinc-700/30 border-zinc-500/30'
                       : 'bg-red-500/10 border-red-500/30'
                     : 'bg-zinc-800/50'
                 )}>
@@ -511,9 +519,11 @@ export default function EntradasPage() {
                               'text-xs px-2 py-0.5 rounded font-medium',
                               entrada.resultado === 'GREEN' 
                                 ? 'bg-green-500/20 text-green-400' 
+                                : entrada.resultado === 'REEMBOLSO'
+                                ? 'bg-zinc-500/20 text-zinc-300'
                                 : 'bg-red-500/20 text-red-400'
                             )}>
-                              {entrada.resultado === 'GREEN' ? <><CheckCircle className="h-3 w-3 inline mr-1" />GREEN</> : <><XCircle className="h-3 w-3 inline mr-1" />RED</>}
+                              {entrada.resultado === 'GREEN' ? <><CheckCircle className="h-3 w-3 inline mr-1" />GREEN</> : entrada.resultado === 'REEMBOLSO' ? <>REEMBOLSO</> : <><XCircle className="h-3 w-3 inline mr-1" />RED</>}
                             </span>
                           ) : (
                             <span className={cn('text-xs px-2 py-0.5 rounded font-medium', config.bg, config.text)}>
@@ -546,9 +556,9 @@ export default function EntradasPage() {
                           {isFinalizada && entrada.lucro !== undefined && (
                             <span className={cn(
                               'font-medium',
-                              entrada.lucro >= 0 ? 'text-green-400' : 'text-red-400'
+                              entrada.resultado === 'REEMBOLSO' ? 'text-zinc-400' : entrada.lucro >= 0 ? 'text-green-400' : 'text-red-400'
                             )}>
-                              {entrada.lucro >= 0 ? '+' : ''}{formatCurrency(entrada.lucro)}
+                              {entrada.resultado === 'REEMBOLSO' ? 'R$ 0,00' : `${entrada.lucro >= 0 ? '+' : ''}${formatCurrency(entrada.lucro)}`}
                             </span>
                           )}
                         </div>
