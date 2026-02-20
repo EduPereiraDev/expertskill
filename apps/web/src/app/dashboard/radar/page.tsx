@@ -1147,7 +1147,7 @@ export default function RadarPage() {
                           )}
 
                           {/* Ida/Volta — mostra em geral e so confrontos */}
-                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && idaVolta && idaVolta.tipo === 'ambos' && (() => {
+                          {idaVolta && idaVolta.tipo === 'ambos' && (() => {
                             const mediaIdaVolta = (idaVolta.idaGols + idaVolta.voltaGols) / 2;
                             const melhor = idaVolta.idaGols > idaVolta.voltaGols ? 'IDA' : idaVolta.voltaGols > idaVolta.idaGols ? 'VOLTA' : 'IGUAL';
                             const operaVolta = idaVolta.voltaOver || mediaIdaVolta >= 2.5;
@@ -1179,7 +1179,7 @@ export default function RadarPage() {
                             </div>
                             );
                           })()}
-                          {(filtroH2H === 'geral' || filtroH2H === 'jogador') && idaVolta && idaVolta.tipo === 'somente_ida' && (() => {
+                          {idaVolta && idaVolta.tipo === 'somente_ida' && (() => {
                             const operaVolta = idaVolta.idaOver;
                             return (
                             <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
@@ -1243,12 +1243,9 @@ export default function RadarPage() {
                       const p = stats.ultimasPartidas;
                       if (p.length < 3) return null;
 
-                      // Ida ou volta: verificar se já enfrentou o adversário recentemente
-                      const confrontosRecentes = p.filter((g: any) => {
-                        const adv = g.adversario.match(/\(([^)]+)\)/)?.[1] || g.adversario;
-                        return adv.toLowerCase() === outroNome.toLowerCase();
-                      });
-                      const isVolta = confrontosRecentes.length > 0;
+                      // Ida ou volta: usar todosConfrontos do escopo pai
+                      // Par de confrontos = proximo é ida, Ímpar = proximo é volta
+                      const isVolta = todosConfrontos.length > 0 && todosConfrontos.length % 2 !== 0;
 
                       // Padrão de gols
                       const mediaGols = p.reduce((s: number, g: any) => s + g.totalGols, 0) / p.length;
@@ -1535,7 +1532,7 @@ export default function RadarPage() {
                               ? 'bg-orange-500/10 text-orange-400 border border-orange-500/30'
                               : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
                           )}>
-                            {analiseJ1.isVolta || analiseJ2.isVolta ? 'Jogo de VOLTA' : 'Jogo de IDA'}
+                            {analiseJ1.isVolta ? 'Jogo de VOLTA' : 'Jogo de IDA'}
                           </span>
                           <span className={cn('text-[10px] px-2 py-0.5 rounded',
                             analiseJ1.tendenciaRecente === 'OVER' && analiseJ2.tendenciaRecente === 'OVER'
