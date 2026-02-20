@@ -1480,13 +1480,12 @@ export default function RadarPage() {
                             <div className="flex justify-between">
                               <span className="text-zinc-500">ML recente ({analise.totalJogos}j):</span>
                               <span className="text-zinc-300">
-                                <span className="text-green-400">{analise.vitorias}V</span> / <span className="text-zinc-400">{analise.empates}E</span> / <span className="text-red-400">{analise.derrotas}D</span>
+                                <span className="text-green-400">{analise.vitorias}V</span> / <span className="text-red-400">{analise.derrotas}D</span>
                               </span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
                               <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
                                 <div className="h-full bg-green-500" style={{ width: `${analise.winRate}%` }} />
-                                <div className="h-full bg-zinc-500" style={{ width: `${Math.round((analise.empates / analise.totalJogos) * 100)}%` }} />
                                 <div className="h-full bg-red-500" style={{ width: `${Math.round((analise.derrotas / analise.totalJogos) * 100)}%` }} />
                               </div>
                               <span className="text-[9px] text-zinc-500">{analise.winRate}% win</span>
