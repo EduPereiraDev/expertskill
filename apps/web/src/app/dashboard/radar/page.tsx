@@ -46,6 +46,7 @@ export default function RadarPage() {
   const [radarLinhas, setRadarLinhas] = useState<RadarLinhasResponse | null>(null);
   const [loadingLinhas, setLoadingLinhas] = useState(false);
   const [mostrarRadarLinhas, setMostrarRadarLinhas] = useState(false);
+  const [linhaSelecionada, setLinhaSelecionada] = useState<string | null>(null);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
 
@@ -391,11 +392,23 @@ export default function RadarPage() {
                   const isOver = l.linha.includes('Over');
                   const isUnder = l.linha.includes('Under');
                   return (
-                    <div key={l.linha} className={cn('p-3 rounded-lg border', tc.bg, tc.border)}>
+                    <div
+                      key={l.linha}
+                      onClick={() => setLinhaSelecionada(linhaSelecionada === l.linha ? null : l.linha)}
+                      className={cn(
+                        'p-3 rounded-lg border cursor-pointer transition-all hover:scale-[1.02]',
+                        linhaSelecionada === l.linha
+                          ? 'ring-2 ring-cyan-500 border-cyan-500/50 bg-cyan-500/10'
+                          : cn(tc.bg, tc.border)
+                      )}
+                    >
                       {/* Nome da linha + tendencia */}
                       <div className="flex items-center justify-between mb-2">
                         <span className={cn('text-sm font-bold', isOver ? 'text-green-300' : isUnder ? 'text-blue-300' : 'text-white')}>{l.linha}</span>
-                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', tc.text, tc.bg)}>{tc.label}</span>
+                        <div className="flex items-center gap-1.5">
+                          {linhaSelecionada === l.linha && <Target className="h-3 w-3 text-cyan-400" />}
+                          <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', tc.text, tc.bg)}>{tc.label}</span>
+                        </div>
                       </div>
 
                       {/* Taxa principal */}
@@ -440,12 +453,114 @@ export default function RadarPage() {
                 })}
               </div>
 
-              {/* Jogos ao vivo — status das linhas */}
-              {radarLinhas.aoVivo.length > 0 && (
+              {/* Painel de linha selecionada — analise ao vivo focada */}
+              {linhaSelecionada && radarLinhas.aoVivo.length > 0 && (() => {
+                const pagou = radarLinhas.aoVivo.filter(av => av.linhasPagas.includes(linhaSelecionada));
+                const pendente = radarLinhas.aoVivo.filter(av => av.linhasPendentes.includes(linhaSelecionada));
+                const totalAoVivo = radarLinhas.aoVivo.length;
+                const taxaAoVivo = totalAoVivo > 0 ? Math.round((pagou.length / totalAoVivo) * 100) : 0;
+                const linhaInfo = radarLinhas.linhas.find(l => l.linha === linhaSelecionada);
+
+                return (
+                  <div className="p-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 space-y-3">
+                    {/* Header do painel */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-4 w-4 text-cyan-400" />
+                        <span className="text-sm font-bold text-cyan-400">Analise ao vivo: {linhaSelecionada}</span>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setLinhaSelecionada(null)} className="h-6 w-6 p-0 text-zinc-400 hover:text-white">
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    {/* Resumo numerico */}
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="text-center p-2 rounded bg-zinc-800/50">
+                        <p className="text-lg font-black text-white">{totalAoVivo}</p>
+                        <p className="text-[10px] text-zinc-500">Jogos</p>
+                      </div>
+                      <div className="text-center p-2 rounded bg-green-500/10">
+                        <p className="text-lg font-black text-green-400">{pagou.length}</p>
+                        <p className="text-[10px] text-green-500">Pagou</p>
+                      </div>
+                      <div className="text-center p-2 rounded bg-red-500/10">
+                        <p className="text-lg font-black text-red-400">{pendente.length}</p>
+                        <p className="text-[10px] text-red-500">Pendente</p>
+                      </div>
+                      <div className="text-center p-2 rounded bg-cyan-500/10">
+                        <p className={cn('text-lg font-black', taxaAoVivo >= 60 ? 'text-green-400' : taxaAoVivo >= 40 ? 'text-yellow-400' : 'text-red-400')}>{taxaAoVivo}%</p>
+                        <p className="text-[10px] text-cyan-500">Ao vivo</p>
+                      </div>
+                    </div>
+
+                    {/* Historico da linha */}
+                    {linhaInfo && (
+                      <div className="flex items-center gap-3 text-xs text-zinc-400">
+                        <span>Historico: <strong className="text-white">{linhaInfo.taxa}%</strong> ({linhaInfo.pagou}/{linhaInfo.total})</span>
+                        <span>•</span>
+                        <span className={cn('font-bold', linhaInfo.tendencia === 'QUENTE' ? 'text-green-400' : linhaInfo.tendencia === 'MORNA' ? 'text-yellow-400' : 'text-red-400')}>
+                          {linhaInfo.tendencia}
+                        </span>
+                        {linhaInfo.streakAtual >= 2 && (
+                          <>
+                            <span>•</span>
+                            <span className={cn(linhaInfo.streakTipo === 'GREEN' ? 'text-green-400' : 'text-red-400')}>
+                              {linhaInfo.streakAtual}x {linhaInfo.streakTipo}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Lista de jogos ao vivo com status da linha */}
+                    <div className="space-y-1.5">
+                      {/* Jogos que PAGARAM */}
+                      {pagou.map((av) => (
+                        <div key={av.partidaId} className="flex items-center justify-between p-2 rounded bg-green-500/10 border border-green-500/20">
+                          <div className="flex items-center gap-2">
+                            <Check className="h-3.5 w-3.5 text-green-400" />
+                            <span className="text-xs text-white font-medium">
+                              {av.jogador1.match(/\(([^)]+)\)/)?.[1] || av.jogador1} vs {av.jogador2.match(/\(([^)]+)\)/)?.[1] || av.jogador2}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-white">{av.placar.home}-{av.placar.away}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold">PAGOU</span>
+                          </div>
+                        </div>
+                      ))}
+                      {/* Jogos PENDENTES */}
+                      {pendente.map((av) => (
+                        <div key={av.partidaId} className="flex items-center justify-between p-2 rounded bg-zinc-800/50 border border-zinc-700/50">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-zinc-500" />
+                            <span className="text-xs text-zinc-300 font-medium">
+                              {av.jogador1.match(/\(([^)]+)\)/)?.[1] || av.jogador1} vs {av.jogador2.match(/\(([^)]+)\)/)?.[1] || av.jogador2}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-mono text-zinc-300">{av.placar.home}-{av.placar.away}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-700 text-zinc-400 font-bold">PENDENTE</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Sem jogos ao vivo */}
+                    {totalAoVivo === 0 && (
+                      <p className="text-xs text-zinc-500 text-center py-2">Nenhum jogo ao vivo no momento</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Jogos ao vivo — status geral (quando nenhuma linha selecionada) */}
+              {!linhaSelecionada && radarLinhas.aoVivo.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    Linhas ao vivo ({radarLinhas.aoVivo.length} jogos)
+                    Linhas ao vivo ({radarLinhas.aoVivo.length} jogos) — clique em uma linha acima para filtrar
                   </p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {radarLinhas.aoVivo.map((av) => (
