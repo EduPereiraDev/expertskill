@@ -893,20 +893,14 @@ export class RadarService {
       take: 50,
     });
 
-    // 2) Definir linhas a analisar
-    // requiresHT: true = so conta partidas que TEM dados de HT (golsHT1 != null)
-    const linhasDef = [
-      { nome: 'Over 0.5 HT', requiresHT: true, check: (ht: number, _ft: number, _g1: number, _g2: number) => ht > 0 },
-      { nome: 'Over 1.5 HT', requiresHT: true, check: (ht: number, _ft: number, _g1: number, _g2: number) => ht > 1 },
-      { nome: 'Over 0.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 0 },
-      { nome: 'Over 1.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 1 },
-      { nome: 'Over 2.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 2 },
-      { nome: 'Over 3.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 3 },
-      { nome: 'Over 4.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 4 },
-      { nome: 'Under 2.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft < 3 },
-      { nome: 'Under 3.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft < 4 },
-      { nome: 'BTTS', requiresHT: false, check: (_ht: number, _ft: number, g1: number, g2: number) => g1 > 0 && g2 > 0 },
-    ];
+    // 2) Gerar TODAS as linhas (HT 0.5-6.5, FT 0.5-10.5, Under, BTTS)
+    type LinhaCheck = (ht: number, ft: number, g1: number, g2: number) => boolean;
+    const linhasDef: { nome: string; requiresHT: boolean; check: LinhaCheck }[] = [];
+    for (let v = 0; v <= 6; v++) linhasDef.push({ nome: `Over ${v + 0.5} HT`, requiresHT: true, check: (ht) => ht > v });
+    for (let v = 0; v <= 10; v++) linhasDef.push({ nome: `Over ${v + 0.5} FT`, requiresHT: false, check: (_ht, ft) => ft > v });
+    for (let v = 0; v <= 4; v++) linhasDef.push({ nome: `Under ${v + 0.5} HT`, requiresHT: true, check: (ht) => ht < v + 1 });
+    for (let v = 0; v <= 6; v++) linhasDef.push({ nome: `Under ${v + 0.5} FT`, requiresHT: false, check: (_ht, ft) => ft < v + 1 });
+    linhasDef.push({ nome: 'BTTS', requiresHT: false, check: (_ht, _ft, g1, g2) => g1 > 0 && g2 > 0 });
 
     // 3) Calcular assertividade de cada linha
     const linhas = linhasDef.map((def) => {
