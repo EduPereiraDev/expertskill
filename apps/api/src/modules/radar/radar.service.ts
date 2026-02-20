@@ -894,17 +894,18 @@ export class RadarService {
     });
 
     // 2) Definir linhas a analisar
+    // requiresHT: true = so conta partidas que TEM dados de HT (golsHT1 != null)
     const linhasDef = [
-      { nome: 'Over 0.5 HT', check: (ht: number) => ht > 0 },
-      { nome: 'Over 1.5 HT', check: (ht: number) => ht > 1 },
-      { nome: 'Over 0.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 0 },
-      { nome: 'Over 1.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 1 },
-      { nome: 'Over 2.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 2 },
-      { nome: 'Over 3.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 3 },
-      { nome: 'Over 4.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 4 },
-      { nome: 'Under 2.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) < 3 },
-      { nome: 'Under 3.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) < 4 },
-      { nome: 'BTTS', check: (_ht: number, ft?: number, g1?: number, g2?: number) => (g1 ?? 0) > 0 && (g2 ?? 0) > 0 },
+      { nome: 'Over 0.5 HT', requiresHT: true, check: (ht: number, _ft: number, _g1: number, _g2: number) => ht > 0 },
+      { nome: 'Over 1.5 HT', requiresHT: true, check: (ht: number, _ft: number, _g1: number, _g2: number) => ht > 1 },
+      { nome: 'Over 0.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 0 },
+      { nome: 'Over 1.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 1 },
+      { nome: 'Over 2.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 2 },
+      { nome: 'Over 3.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 3 },
+      { nome: 'Over 4.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft > 4 },
+      { nome: 'Under 2.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft < 3 },
+      { nome: 'Under 3.5 FT', requiresHT: false, check: (_ht: number, ft: number, _g1: number, _g2: number) => ft < 4 },
+      { nome: 'BTTS', requiresHT: false, check: (_ht: number, _ft: number, g1: number, g2: number) => g1 > 0 && g2 > 0 },
     ];
 
     // 3) Calcular assertividade de cada linha
@@ -912,6 +913,9 @@ export class RadarService {
       const resultados: ('GREEN' | 'RED')[] = [];
 
       for (const p of partidas) {
+        // Pular partidas sem dados de HT para linhas que exigem HT
+        if (def.requiresHT && p.golsHT1 === null && p.golsHT2 === null) continue;
+
         const golsHT = (p.golsHT1 ?? 0) + (p.golsHT2 ?? 0);
         const golsFT = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
         const pagou = def.check(golsHT, golsFT, p.golsFT1 ?? 0, p.golsFT2 ?? 0);

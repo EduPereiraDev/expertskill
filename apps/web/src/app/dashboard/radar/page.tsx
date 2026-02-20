@@ -86,7 +86,7 @@ export default function RadarPage() {
   const toggleRadarLinhas = () => {
     const next = !mostrarRadarLinhas;
     setMostrarRadarLinhas(next);
-    if (next && !radarLinhas) fetchRadarLinhas();
+    if (next) fetchRadarLinhas(); // Sempre recarrega ao abrir
   };
 
   useEffect(() => {
@@ -112,10 +112,13 @@ export default function RadarPage() {
     return () => clearInterval(interval);
   }, [ligaSelecionada, isPro]);
 
-  // Recarregar radar de linhas quando muda a liga (se estiver aberto)
+  // Radar de Linha: recarregar ao mudar liga + polling 15s quando aberto
   useEffect(() => {
-    if (mostrarRadarLinhas) fetchRadarLinhas();
-  }, [ligaSelecionada]);
+    if (!mostrarRadarLinhas || !isPro) return;
+    fetchRadarLinhas();
+    const interval = setInterval(fetchRadarLinhas, 15000);
+    return () => clearInterval(interval);
+  }, [ligaSelecionada, mostrarRadarLinhas, isPro]);
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
