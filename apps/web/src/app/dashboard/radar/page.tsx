@@ -326,7 +326,7 @@ export default function RadarPage() {
                   <div className="mt-2 space-y-0.5">
                     {j.ultimasPartidas.slice(0, 5).map((p: any, i: number) => (
                       <div key={i} className="flex items-center justify-between text-[10px] py-0.5 border-b border-zinc-800/50 last:border-0">
-                        <span className="text-zinc-500 truncate max-w-[120px]">vs {p.adversario}</span>
+                        <span className="text-zinc-500 truncate max-w-[160px]">{p.adversario}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-white font-mono">{p.golsPro}-{p.golsContra}</span>
                           <span className={cn('font-medium', p.totalGols > 2 ? 'text-green-400' : 'text-red-400')}>
@@ -2439,18 +2439,18 @@ export default function RadarPage() {
                           );
                         })()}
                         <div className="mt-2 pt-2 border-t border-zinc-800 space-y-0.5">
-                          <div className="flex items-center justify-between text-[10px] text-zinc-600 px-1 mb-1">
-                            <span className="w-16">Ultimos jogos</span>
-                            <span>HT</span>
-                            <span>FT</span>
-                            <span>Total</span>
+                          <div className="flex items-center text-[10px] text-zinc-600 px-1 mb-1 gap-2">
+                            <span className="flex-1">Adversario</span>
+                            <span className="w-10 text-center">HT</span>
+                            <span className="w-10 text-center">FT</span>
+                            <span className="w-10 text-center">Total</span>
                           </div>
                           {partidasFiltradas.slice(0, 5).map((p: any, i: number) => (
-                            <div key={i} className="flex items-center justify-between text-[11px] px-1 py-0.5 bg-zinc-900/30 rounded">
-                              <span className="text-zinc-500 truncate w-16">{p.adversario.match(/\(([^)]+)\)/)?.[1] || p.adversario}</span>
-                              <span className="text-zinc-400 font-mono">{p.golsHT}-{p.golsHTContra || 0}</span>
-                              <span className={cn('font-mono font-medium', p.resultado === 'V' ? 'text-green-400' : p.resultado === 'D' ? 'text-red-400' : 'text-zinc-400')}>{p.golsPro}-{p.golsContra}</span>
-                              <span className="text-zinc-500">{p.totalGols}g</span>
+                            <div key={i} className="flex items-center text-[11px] px-1 py-0.5 bg-zinc-900/30 rounded gap-2">
+                              <span className="text-zinc-400 truncate flex-1">{p.adversario}</span>
+                              <span className="text-zinc-400 font-mono w-10 text-center">{p.golsHT}-{p.golsHTContra || 0}</span>
+                              <span className={cn('font-mono font-medium w-10 text-center', p.resultado === 'V' ? 'text-green-400' : p.resultado === 'D' ? 'text-red-400' : 'text-zinc-400')}>{p.golsPro}-{p.golsContra}</span>
+                              <span className="text-zinc-500 w-10 text-center">{p.totalGols}g</span>
                             </div>
                           ))}
                           {filtroH2H !== 'geral' && partidasFiltradas.length === 0 && (
