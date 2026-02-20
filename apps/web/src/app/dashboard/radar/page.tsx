@@ -2442,7 +2442,7 @@ export default function RadarPage() {
                             <span className="w-12 text-center">FT</span>
                             <span className="w-12 text-center">Total</span>
                           </div>
-                          {partidasFiltradas.slice(0, 5).map((p: any, i: number) => (
+                          {partidasFiltradas.slice(0, 15).map((p: any, i: number) => (
                             <div key={i} className="flex items-center text-xs px-1.5 py-1 bg-zinc-900/50 rounded-md gap-2 border border-zinc-800/50">
                               <span className="text-white truncate flex-1 font-medium">{p.adversario}</span>
                               <span className="text-zinc-300 font-mono w-12 text-center">{p.golsHT}-{p.golsHTContra || 0}</span>
