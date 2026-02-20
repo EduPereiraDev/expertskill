@@ -2348,7 +2348,7 @@ export default function RadarPage() {
                         : perfilVulneravel ? 'Defensivo mas vulneravel'
                         : 'Equilibrado';
                       return (
-                      <div key={idx} className="p-3 bg-zinc-800/30 rounded border border-zinc-800">
+                      <div key={idx} className="p-3 bg-zinc-800/50 rounded-lg border border-zinc-700">
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-medium text-white text-sm">{nome} {filtroH2H !== 'geral' && <span className="text-zinc-500 text-[10px] font-normal">{filtroH2H === 'time' ? `c/ ${outroTime}` : `vs ${outroNome}`}</span>}</span>
                           <span className={cn('text-[10px] px-1.5 py-0.5 rounded',
@@ -2357,10 +2357,10 @@ export default function RadarPage() {
                             {perfil}
                           </span>
                         </div>
-                        <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs">
-                          <div><span className="text-zinc-500">Media gols/jogo:</span> <span className="text-white">{s.mediaGolsFT.toFixed(1)}</span></div>
-                          <div className="col-span-2"><span className="text-zinc-500">Faz / Sofre:</span> <span className="text-zinc-300">{s.fazSofre}</span>
-                            <span className="text-zinc-600 text-[10px] ml-1">
+                        <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-xs mt-1">
+                          <div><span className="text-zinc-400">Media gols/jogo:</span> <span className="text-white font-bold">{s.mediaGolsFT.toFixed(1)}</span></div>
+                          <div className="col-span-2"><span className="text-zinc-400">Faz / Sofre:</span> <span className="text-white font-medium">{s.fazSofre}</span>
+                            <span className="text-zinc-500 text-[10px] ml-1">
                               {s.mediaGolsFT > s.mediaGolsSofridos + 0.5 ? '— Ataca mais' 
                                 : s.mediaGolsSofridos > s.mediaGolsFT + 0.5 ? '— Sofre bastante'
                                 : '— Equilibrio entre ataque e defesa'}
@@ -2379,34 +2379,34 @@ export default function RadarPage() {
                           </p>
                         )}
                         <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
-                          <div className="p-1.5 bg-zinc-900/40 rounded border border-zinc-800">
-                            <p className="text-zinc-600 text-[10px] mb-1">1o Tempo (HT)</p>
+                          <div className="p-2 bg-zinc-900/60 rounded-lg border border-zinc-700">
+                            <p className="text-zinc-400 text-[11px] font-semibold mb-1.5">1o Tempo (HT)</p>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Gol no HT:</span>
+                              <span className="text-zinc-300">Gol no HT:</span>
                               <span className={cn('font-medium', s.percentualOver05HT >= 70 ? 'text-green-400' : s.percentualOver05HT >= 50 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver05HT.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Over 1.5 HT:</span>
+                              <span className="text-zinc-300">Over 1.5 HT:</span>
                               <span className={cn('font-medium', s.percentualOver15HT >= 50 ? 'text-green-400' : s.percentualOver15HT >= 30 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver15HT.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Media HT:</span>
-                              <span className="text-zinc-300">{s.mediaGolsHT.toFixed(1)} gols</span>
+                              <span className="text-zinc-300">Media HT:</span>
+                              <span className="text-white font-medium">{s.mediaGolsHT.toFixed(1)} gols</span>
                             </div>
                           </div>
-                          <div className="p-1.5 bg-zinc-900/40 rounded border border-zinc-800">
-                            <p className="text-zinc-600 text-[10px] mb-1">Final (FT)</p>
+                          <div className="p-2 bg-zinc-900/60 rounded-lg border border-zinc-700">
+                            <p className="text-zinc-400 text-[11px] font-semibold mb-1.5">Final (FT)</p>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Over 2.5:</span>
+                              <span className="text-zinc-300">Over 2.5:</span>
                               <span className={cn('font-medium', s.percentualOver >= 70 ? 'text-green-400' : s.percentualOver >= 50 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualOver.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">BTTS:</span>
+                              <span className="text-zinc-300">BTTS:</span>
                               <span className={cn('font-medium', s.percentualBTTS >= 60 ? 'text-green-400' : s.percentualBTTS >= 40 ? 'text-yellow-400' : 'text-red-400')}>{s.percentualBTTS.toFixed(0)}%</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-zinc-500">Media FT:</span>
-                              <span className="text-zinc-300">{s.mediaGolsFT.toFixed(1)} gols</span>
+                              <span className="text-zinc-300">Media FT:</span>
+                              <span className="text-white font-medium">{s.mediaGolsFT.toFixed(1)} gols</span>
                             </div>
                           </div>
                         </div>
@@ -2419,15 +2419,15 @@ export default function RadarPage() {
                           return (
                             <div className="mt-2 text-[10px]">
                               <div className="flex items-center justify-between">
-                                <span className="text-zinc-500">ML recente ({pf.length}j):</span>
-                                <span className="text-zinc-300">{v}V / {e}E / {d}D</span>
+                                <span className="text-zinc-400">ML recente ({pf.length}j):</span>
+                                <span className="text-white font-medium">{v}V / {e}E / {d}D</span>
                               </div>
                               <div className="mt-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden flex">
                                 {v > 0 && <div className="bg-green-500 h-full" style={{ width: `${(v/pf.length)*100}%` }} />}
                                 {e > 0 && <div className="bg-yellow-500 h-full" style={{ width: `${(e/pf.length)*100}%` }} />}
                                 {d > 0 && <div className="bg-red-500 h-full" style={{ width: `${(d/pf.length)*100}%` }} />}
                               </div>
-                              <p className="text-zinc-600 mt-0.5">{winRate}% win</p>
+                              <p className="text-zinc-400 mt-0.5">{winRate}% win</p>
                               {filtroH2H !== 'geral' && (
                                 <p className="text-zinc-500 mt-0.5">
                                   {winRate >= 60 ? 'Fase boa — pode jogar mais confiante neste confronto'
@@ -2439,18 +2439,18 @@ export default function RadarPage() {
                           );
                         })()}
                         <div className="mt-2 pt-2 border-t border-zinc-800 space-y-0.5">
-                          <div className="flex items-center text-[10px] text-zinc-600 px-1 mb-1 gap-2">
+                          <div className="flex items-center text-[11px] text-zinc-400 font-semibold px-1.5 mb-1 gap-2">
                             <span className="flex-1">Adversario</span>
-                            <span className="w-10 text-center">HT</span>
-                            <span className="w-10 text-center">FT</span>
-                            <span className="w-10 text-center">Total</span>
+                            <span className="w-12 text-center">HT</span>
+                            <span className="w-12 text-center">FT</span>
+                            <span className="w-12 text-center">Total</span>
                           </div>
                           {partidasFiltradas.slice(0, 5).map((p: any, i: number) => (
-                            <div key={i} className="flex items-center text-[11px] px-1 py-0.5 bg-zinc-900/30 rounded gap-2">
-                              <span className="text-zinc-400 truncate flex-1">{p.adversario}</span>
-                              <span className="text-zinc-400 font-mono w-10 text-center">{p.golsHT}-{p.golsHTContra || 0}</span>
-                              <span className={cn('font-mono font-medium w-10 text-center', p.resultado === 'V' ? 'text-green-400' : p.resultado === 'D' ? 'text-red-400' : 'text-zinc-400')}>{p.golsPro}-{p.golsContra}</span>
-                              <span className="text-zinc-500 w-10 text-center">{p.totalGols}g</span>
+                            <div key={i} className="flex items-center text-xs px-1.5 py-1 bg-zinc-900/50 rounded-md gap-2 border border-zinc-800/50">
+                              <span className="text-white truncate flex-1 font-medium">{p.adversario}</span>
+                              <span className="text-zinc-300 font-mono w-12 text-center">{p.golsHT}-{p.golsHTContra || 0}</span>
+                              <span className={cn('font-mono font-bold w-12 text-center', p.resultado === 'V' ? 'text-green-400' : p.resultado === 'D' ? 'text-red-400' : 'text-zinc-300')}>{p.golsPro}-{p.golsContra}</span>
+                              <span className="text-zinc-300 font-mono w-12 text-center">{p.totalGols}g</span>
                             </div>
                           ))}
                           {filtroH2H !== 'geral' && partidasFiltradas.length === 0 && (
