@@ -4,15 +4,14 @@ import { Liga, StatusPartida, Cenario } from '@prisma/client';
 
 /**
  * Contexto de analise:
- * - DIARIO: Radar ao vivo, stats rapidas do dia (ultimos 10-15 jogos)
- * - HISTORICO: Entradas expert, recomendacoes, classificacao (todo historico disponivel, 30-50 jogos)
- *   Usado quando precisao e critica (decidir se opera ou nao)
+ * - DIARIO: Radar ao vivo, stats rapidas (ultimas 15 partidas)
+ * - HISTORICO: Analise detalhada, pre-live, recomendacoes (ultimas 30 partidas)
  */
 export type ContextoAnalise = 'DIARIO' | 'HISTORICO';
 
 const LIMITE_PARTIDAS: Record<ContextoAnalise, number> = {
   DIARIO: 15,
-  HISTORICO: 50,
+  HISTORICO: 30,
 };
 
 export interface RadarPartida {
@@ -580,7 +579,7 @@ export class RadarService {
 
     return {
       nome: nomeJogador,
-      ultimasPartidas: contexto === 'HISTORICO' ? ultimasPartidas.slice(0, 15) : ultimasPartidas.slice(0, 10),
+      ultimasPartidas,
       mediaGolsHT: useCalculated ? totalGolsHT / count : (jogador.mediaGolsHT || totalGolsHT / count),
       mediaGolsFT: useCalculated ? totalGolsFT / count : (jogador.mediaGolsFT || totalGolsFT / count),
       percentualOver: useCalculated ? (over25Count / count) * 100 : jogador.percentualOver,
