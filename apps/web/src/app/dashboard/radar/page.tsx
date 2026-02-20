@@ -521,30 +521,70 @@ export default function RadarPage() {
                     })}
                   </div>
 
-                  {/* Lista de jogos ao vivo */}
+                  {/* Lista de jogos ao vivo — ordenados por maior probabilidade */}
                   <div className="space-y-1.5">
-                    {radarLinhas.aoVivo.map((av) => {
-                      const pagas = linhasSelecionadas.filter(n => av.linhasPagas.includes(n));
-                      const pendentes = linhasSelecionadas.filter(n => av.linhasPendentes.includes(n));
-                      return (
+                    {radarLinhas.aoVivo
+                      .map((av) => {
+                        const pagas = linhasSelecionadas.filter(n => av.linhasPagas.includes(n));
+                        const pendentes = linhasSelecionadas.filter(n => av.linhasPendentes.includes(n));
+                        // Poisson: P(X > k) = 1 - sum(P(X=i), i=0..k)
+                        const poisson = (k: number, lambda: number) => {
+                          if (lambda <= 0) return 0;
+                          let sum = 0;
+                          for (let i = 0; i <= k; i++) {
+                            const f = i <= 1 ? 1 : Array.from({length: i}, (_, x) => x + 1).reduce((a, b) => a * b, 1);
+                            sum += (Math.pow(lambda, i) * Math.exp(-lambda)) / f;
+                          }
+                          return sum;
+                        };
+                        // Calcular prob para cada linha selecionada
+                        const probs = linhasSelecionadas.map(nome => {
+                          const isHT = nome.endsWith('HT');
+                          const media = isHT ? av.mediaHT : av.mediaFT;
+                          const numMatch = nome.match(/[\d.]+/);
+                          const threshold = numMatch ? parseFloat(numMatch[0]) : 0;
+                          const isOver = nome.startsWith('Over');
+                          const isUnder = nome.startsWith('Under');
+                          let prob = 0;
+                          if (isOver) prob = Math.round((1 - poisson(Math.floor(threshold), media)) * 100);
+                          else if (isUnder) prob = Math.round(poisson(Math.floor(threshold), media) * 100);
+                          else if (nome === 'BTTS') prob = Math.round((1 - poisson(0, av.mediaFT / 2)) * (1 - poisson(0, av.mediaFT / 2)) * 100);
+                          return { nome, prob: Math.min(99, Math.max(1, prob)) };
+                        });
+                        const maxProb = Math.max(...probs.map(p => p.prob));
+                        return { av, pagas, pendentes, probs, maxProb };
+                      })
+                      .sort((a, b) => b.maxProb - a.maxProb)
+                      .map(({ av, pagas, pendentes, probs }) => (
                         <div key={av.partidaId} className="p-2.5 rounded-lg border border-zinc-700 bg-zinc-900/50">
                           <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-white font-medium">
                               {av.jogador1.match(/\(([^)]+)\)/)?.[1] || av.jogador1} vs {av.jogador2.match(/\(([^)]+)\)/)?.[1] || av.jogador2}
                             </span>
-                            <span className="text-xs font-mono text-white">{av.placar.home}-{av.placar.away}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-zinc-500">Media {av.mediaFT.toFixed(1)}</span>
+                              <span className="text-xs font-mono text-white">{av.placar.home}-{av.placar.away}</span>
+                            </div>
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            {pagas.map(lp => (
-                              <span key={lp} className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-bold">{lp}</span>
-                            ))}
-                            {pendentes.map(lp => (
-                              <span key={lp} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500 font-medium">{lp}</span>
-                            ))}
+                          <div className="flex flex-wrap gap-1.5">
+                            {probs.map(({ nome, prob }) => {
+                              const pago = pagas.includes(nome);
+                              return (
+                                <div key={nome} className={cn(
+                                  'flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold',
+                                  pago ? 'bg-green-500/20 text-green-400' : 'bg-zinc-800 text-zinc-400'
+                                )}>
+                                  {pago ? <Check className="h-2.5 w-2.5" /> : null}
+                                  <span>{nome.endsWith('HT') || nome.endsWith('FT') ? nome : nome}</span>
+                                  <span className={cn('font-black', prob >= 70 ? 'text-green-400' : prob >= 40 ? 'text-yellow-400' : 'text-red-400')}>
+                                    {prob}%
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
                   </div>
                 </div>
               )}

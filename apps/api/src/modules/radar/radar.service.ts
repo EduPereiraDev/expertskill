@@ -973,15 +973,18 @@ export class RadarService {
         }
       }
 
+      const j1 = p as any;
       return {
         partidaId: p.id,
-        jogador1: (p as any).jogador1.nome,
-        jogador2: (p as any).jogador2.nome,
+        jogador1: j1.jogador1.nome,
+        jogador2: j1.jogador2.nome,
         liga: p.liga,
         placar: { home: g1, away: g2 },
         golsHT,
         linhasPagas,
         linhasPendentes,
+        mediaFT: (j1.jogador1.mediaGolsFT || 0) + (j1.jogador2.mediaGolsFT || 0),
+        mediaHT: (j1.jogador1.mediaGolsHT || 0) + (j1.jogador2.mediaGolsHT || 0),
       };
     });
 

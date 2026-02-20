@@ -234,6 +234,8 @@ export interface RadarLinhaAoVivo {
   golsHT: number;
   linhasPagas: string[];
   linhasPendentes: string[];
+  mediaFT: number;
+  mediaHT: number;
 }
 
 export interface RadarLinhasResponse {
