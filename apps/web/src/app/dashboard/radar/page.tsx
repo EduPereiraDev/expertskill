@@ -1048,7 +1048,12 @@ export default function RadarPage() {
                     const placarCount: Record<string, number> = {};
                     placaresH2Hx.forEach((pl: string) => { placarCount[pl] = (placarCount[pl] || 0) + 1; });
                     const placaresRepetidos = Object.entries(placarCount).filter(([_, c]) => c >= 2);
-                    const temTroia = placaresRepetidos.length > 0;
+                    // Alerta Troia so aparece se placares repetidos forem Under (soma <= 2)
+                    const placaresRepetidosUnder = placaresRepetidos.filter(([placar]) => {
+                      const [g1, g2] = placar.split('-').map(Number);
+                      return (g1 + g2) <= 2;
+                    });
+                    const temTroia = placaresRepetidosUnder.length > 0;
                     const StatsCard = ({ title, stats, color }: { title: string; stats: any; color: string }) => (
                       <div className={cn('p-3 bg-zinc-900/40 rounded border', stats ? 'border-zinc-800' : 'border-zinc-800/50')}>
                         <p className={cn('text-xs font-semibold mb-2', color)}>{title}</p>
@@ -1220,7 +1225,7 @@ export default function RadarPage() {
                                 <AlertTriangle className="h-3.5 w-3.5" /> ALERTA TROIA
                               </p>
                               <div className="mt-1.5 space-y-1">
-                                {placaresRepetidos.map(([placar, count]) => (
+                                {placaresRepetidosUnder.map(([placar, count]) => (
                                   <div key={placar} className="flex items-center gap-2">
                                     <span className="text-sm font-mono font-bold text-red-300 bg-red-500/10 px-2 py-0.5 rounded">{placar}</span>
                                     <span className="text-[10px] text-red-400">repetiu {count}x nos confrontos</span>
