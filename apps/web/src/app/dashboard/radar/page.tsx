@@ -425,14 +425,14 @@ export default function RadarPage() {
                                   key={l.linha}
                                   onClick={() => toggleLinha(l.linha)}
                                   className={cn(
-                                    'text-[11px] px-2 py-1 rounded-md border transition-all font-medium',
+                                    'text-xs px-2.5 py-1.5 rounded-md border transition-all font-semibold',
                                     selected
                                       ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-400'
                                       : 'bg-zinc-800/50 border-zinc-700 text-zinc-400 hover:border-zinc-500'
                                   )}
                                 >
-                                  {l.linha.replace(' HT', '').replace(' FT', '')}
-                                  <span className={cn('ml-1 text-[9px]', l.taxa >= 70 ? 'text-green-400' : l.taxa >= 50 ? 'text-yellow-400' : 'text-red-400')}>
+                                  {l.linha === 'BTTS' ? 'BTTS' : l.linha.match(/[\d.]+/)?.[0] || l.linha}
+                                  <span className={cn('ml-1', l.taxa >= 70 ? 'text-green-400' : l.taxa >= 50 ? 'text-yellow-400' : 'text-red-400')}>
                                     {l.taxa}%
                                   </span>
                                 </button>
