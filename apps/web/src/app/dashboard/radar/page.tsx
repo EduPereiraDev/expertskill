@@ -875,9 +875,9 @@ export default function RadarPage() {
               return scores.sort((a, b) => b.prob - a.prob).slice(0, 5);
             })();
 
-            // Nomes dos times (antes do parêntese)
-            const timeJ1 = j1.nome.match(/^([^(]+)/)?.[1]?.trim() || j1.nome;
-            const timeJ2 = j2.nome.match(/^([^(]+)/)?.[1]?.trim() || j2.nome;
+            // Nomes dos times (antes do parêntese) — usar nomeCompleto que tem "Time (Nickname)"
+            const timeJ1 = (j1.nomeCompleto || j1.nome).match(/^([^(]+)/)?.[1]?.trim() || j1.nome;
+            const timeJ2 = (j2.nomeCompleto || j2.nome).match(/^([^(]+)/)?.[1]?.trim() || j2.nome;
 
             // H2H unificado (backend + nickname) — escopo compartilhado entre blocos
             const h2hJogosGlobal = a.h2h.confrontosDiretos || [];

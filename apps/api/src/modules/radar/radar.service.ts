@@ -56,6 +56,7 @@ export interface HistoricoPartida {
 
 export interface JogadorStatsDetalhado {
   nome: string;
+  nomeCompleto: string;
   ultimasPartidas: HistoricoPartida[];
   mediaGolsHT: number;
   mediaGolsFT: number;
@@ -579,6 +580,7 @@ export class RadarService {
 
     return {
       nome: nomeJogador,
+      nomeCompleto: jogador.nome,
       ultimasPartidas,
       mediaGolsHT: useCalculated ? totalGolsHT / count : (jogador.mediaGolsHT || totalGolsHT / count),
       mediaGolsFT: useCalculated ? totalGolsFT / count : (jogador.mediaGolsFT || totalGolsFT / count),

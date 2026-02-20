@@ -162,6 +162,7 @@ export interface HistoricoPartida {
 
 export interface JogadorStatsDetalhado {
   nome: string;
+  nomeCompleto: string;
   ultimasPartidas: HistoricoPartida[];
   mediaGolsHT: number;
   mediaGolsFT: number;
