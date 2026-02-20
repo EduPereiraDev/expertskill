@@ -651,48 +651,6 @@ export default function RadarPage() {
               })}
             </div>
 
-            {/* Feed de Oportunidades — Decisivo */}
-            {(() => {
-              const oportunidades = partidas.filter(p =>
-                p.veredicto?.acao === 'ENTRA'
-              ).sort((a, b) => (b.veredicto?.confianca || 0) - (a.veredicto?.confianca || 0)).slice(0, 4);
-              if (oportunidades.length === 0) return null;
-              return (
-                <div className="p-3 bg-gradient-to-r from-green-900/20 to-zinc-900 rounded-lg border border-green-500/20">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Zap className="h-4 w-4 text-green-400" />
-                    <span className="text-xs font-semibold text-green-400">ENTRAR AGORA</span>
-                    <span className="text-[10px] text-zinc-500">— Melhores oportunidades por confianca</span>
-                  </div>
-                  <div className="space-y-2">
-                    {oportunidades.map(p => {
-                      const v = p.veredicto;
-                      const isOver = v.linha.includes('Over');
-                      return (
-                        <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg border bg-green-500/5 border-green-500/20 cursor-pointer hover:bg-green-500/10 transition-colors" onClick={() => abrirAnalise(p.id)}>
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="flex flex-col items-center">
-                              <span className="text-lg font-black text-green-400">{v.confianca}%</span>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="text-xs text-white font-medium truncate">{p.jogador1.nome.match(/\(([^)]+)\)/)?.[1] || p.jogador1.nome} vs {p.jogador2.nome.match(/\(([^)]+)\)/)?.[1] || p.jogador2.nome}</p>
-                              <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', isOver ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400')}>{v.linha}</span>
-                                <span className="text-[10px] text-zinc-500">{formatLiga(p.liga)}</span>
-                                {p.placar && <span className="text-[10px] font-mono text-white">{p.placar.home}-{p.placar.away}</span>}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex-shrink-0">
-                            <span className="text-[10px] text-green-400 font-medium">ENTRA</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
           </div>
         );
       })()}
