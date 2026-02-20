@@ -506,10 +506,8 @@ export class RadarService {
       const golsHTContra = isHome ? (p.golsHT2 || 0) : (p.golsHT1 || 0);
       const totalGols = (p.golsFT1 || 0) + (p.golsFT2 || 0);
       const totalGolsHT = (p.golsHT1 || 0) + (p.golsHT2 || 0);
-      // Mostrar o nickname do adversário, não o time
-      const adversarioNome = isHome ? p.jogador2.nome : p.jogador1.nome;
-      const adversarioNickname = this.extractNickname(adversarioNome) || adversarioNome;
-      const adversario = adversarioNickname;
+      // Retornar nome completo do adversário (Time (Nickname)) para filtros por time funcionarem
+      const adversario = isHome ? p.jogador2.nome : p.jogador1.nome;
 
       let resultado: 'V' | 'E' | 'D' = 'E';
       if (golsPro > golsContra) resultado = 'V';
