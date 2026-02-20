@@ -26,6 +26,11 @@ export class RadarController {
     return this.radarService.getPartidasAoVivo();
   }
 
+  @Get('linhas')
+  getRadarLinhas(@Query('liga') liga?: Liga) {
+    return this.radarService.getRadarLinhas(liga);
+  }
+
   @Get('jogador/busca')
   buscarJogador(@Query('nome') nome: string) {
     if (!nome || nome.length < 2) return [];

@@ -853,6 +853,148 @@ export class RadarService {
     };
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // RADAR DE LINHA — Assertividade de cada linha por liga
+  // ═══════════════════════════════════════════════════════════════════
+
+  async getRadarLinhas(liga?: Liga): Promise<{
+    linhas: {
+      linha: string;
+      pagou: number;
+      total: number;
+      taxa: number;
+      tendencia: 'QUENTE' | 'MORNA' | 'FRIA';
+      sequencia: ('GREEN' | 'RED')[];
+      streakAtual: number;
+      streakTipo: 'GREEN' | 'RED';
+    }[];
+    aoVivo: {
+      partidaId: string;
+      jogador1: string;
+      jogador2: string;
+      liga: Liga;
+      placar: { home: number; away: number };
+      golsHT: number;
+      linhasPagas: string[];
+      linhasPendentes: string[];
+    }[];
+    totalPartidas: number;
+    liga: string;
+  }> {
+    // 1) Buscar ultimas partidas FINALIZADAS da liga
+    const partidas = await this.prisma.partida.findMany({
+      where: {
+        ...(liga && { liga }),
+        status: StatusPartida.FINALIZADA,
+        golsFT1: { not: null },
+        golsFT2: { not: null },
+      },
+      orderBy: { dataHora: 'desc' },
+      take: 50,
+    });
+
+    // 2) Definir linhas a analisar
+    const linhasDef = [
+      { nome: 'Over 0.5 HT', check: (ht: number) => ht > 0 },
+      { nome: 'Over 1.5 HT', check: (ht: number) => ht > 1 },
+      { nome: 'Over 0.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 0 },
+      { nome: 'Over 1.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 1 },
+      { nome: 'Over 2.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 2 },
+      { nome: 'Over 3.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 3 },
+      { nome: 'Over 4.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) > 4 },
+      { nome: 'Under 2.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) < 3 },
+      { nome: 'Under 3.5 FT', check: (_ht: number, ft?: number) => (ft ?? 0) < 4 },
+      { nome: 'BTTS', check: (_ht: number, ft?: number, g1?: number, g2?: number) => (g1 ?? 0) > 0 && (g2 ?? 0) > 0 },
+    ];
+
+    // 3) Calcular assertividade de cada linha
+    const linhas = linhasDef.map((def) => {
+      const resultados: ('GREEN' | 'RED')[] = [];
+
+      for (const p of partidas) {
+        const golsHT = (p.golsHT1 ?? 0) + (p.golsHT2 ?? 0);
+        const golsFT = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+        const pagou = def.check(golsHT, golsFT, p.golsFT1 ?? 0, p.golsFT2 ?? 0);
+        resultados.push(pagou ? 'GREEN' : 'RED');
+      }
+
+      const pagou = resultados.filter((r) => r === 'GREEN').length;
+      const total = resultados.length;
+      const taxa = total > 0 ? Math.round((pagou / total) * 100) : 0;
+
+      // Streak atual
+      let streakAtual = 0;
+      const streakTipo = resultados[0] || 'RED';
+      for (const r of resultados) {
+        if (r === streakTipo) streakAtual++;
+        else break;
+      }
+
+      // Tendencia baseada nos ultimos 10
+      const ultimos10 = resultados.slice(0, 10);
+      const greenUltimos10 = ultimos10.filter((r) => r === 'GREEN').length;
+      const taxaRecente = ultimos10.length > 0 ? greenUltimos10 / ultimos10.length : 0;
+      const tendencia: 'QUENTE' | 'MORNA' | 'FRIA' =
+        taxaRecente >= 0.7 ? 'QUENTE' : taxaRecente >= 0.4 ? 'MORNA' : 'FRIA';
+
+      return {
+        linha: def.nome,
+        pagou,
+        total,
+        taxa,
+        tendencia,
+        sequencia: resultados.slice(0, 20), // Ultimos 20 para visualizacao
+        streakAtual,
+        streakTipo,
+      };
+    });
+
+    // 4) Jogos AO VIVO — quais linhas ja pagaram
+    const aoVivoPartidas = await this.prisma.partida.findMany({
+      where: {
+        ...(liga && { liga }),
+        status: StatusPartida.AO_VIVO,
+      },
+      include: { jogador1: true, jogador2: true },
+    });
+
+    const aoVivo = aoVivoPartidas.map((p) => {
+      const golsHT = (p.golsHT1 ?? 0) + (p.golsHT2 ?? 0);
+      const golsFT = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+      const g1 = p.golsFT1 ?? 0;
+      const g2 = p.golsFT2 ?? 0;
+
+      const linhasPagas: string[] = [];
+      const linhasPendentes: string[] = [];
+
+      for (const def of linhasDef) {
+        if (def.check(golsHT, golsFT, g1, g2)) {
+          linhasPagas.push(def.nome);
+        } else {
+          linhasPendentes.push(def.nome);
+        }
+      }
+
+      return {
+        partidaId: p.id,
+        jogador1: (p as any).jogador1.nome,
+        jogador2: (p as any).jogador2.nome,
+        liga: p.liga,
+        placar: { home: g1, away: g2 },
+        golsHT,
+        linhasPagas,
+        linhasPendentes,
+      };
+    });
+
+    return {
+      linhas: linhas.sort((a, b) => b.taxa - a.taxa),
+      aoVivo,
+      totalPartidas: partidas.length,
+      liga: liga || 'TODAS',
+    };
+  }
+
   private gerarRecomendacao(
     partida: RadarPartida,
     jogador1Stats: any,

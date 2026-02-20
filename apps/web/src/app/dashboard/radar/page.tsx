@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { radarApi, RadarPartida, Liga, AnaliseDetalhada } from '@/lib/api';
+import { radarApi, RadarPartida, Liga, AnaliseDetalhada, RadarLinhasResponse } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -43,6 +43,9 @@ export default function RadarPage() {
   const [buscaJogador, setBuscaJogador] = useState('');
   const [resultadosBusca, setResultadosBusca] = useState<any[]>([]);
   const [loadingBusca, setLoadingBusca] = useState(false);
+  const [radarLinhas, setRadarLinhas] = useState<RadarLinhasResponse | null>(null);
+  const [loadingLinhas, setLoadingLinhas] = useState(false);
+  const [mostrarRadarLinhas, setMostrarRadarLinhas] = useState(false);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
 
@@ -70,6 +73,22 @@ export default function RadarPage() {
     finally { setLoadingBusca(false); }
   };
 
+  const fetchRadarLinhas = async () => {
+    setLoadingLinhas(true);
+    try {
+      const liga = ligaSelecionada === 'TODAS' ? undefined : ligaSelecionada;
+      const { data } = await radarApi.getLinhas(liga);
+      setRadarLinhas(data);
+    } catch { setRadarLinhas(null); }
+    finally { setLoadingLinhas(false); }
+  };
+
+  const toggleRadarLinhas = () => {
+    const next = !mostrarRadarLinhas;
+    setMostrarRadarLinhas(next);
+    if (next && !radarLinhas) fetchRadarLinhas();
+  };
+
   useEffect(() => {
     if (!isPro) return;
     
@@ -89,9 +108,14 @@ export default function RadarPage() {
     };
 
     fetchPartidas();
-    const interval = setInterval(fetchPartidas, 10000); // Atualiza a cada 10s (silencioso)
+    const interval = setInterval(fetchPartidas, 10000);
     return () => clearInterval(interval);
   }, [ligaSelecionada, isPro]);
+
+  // Recarregar radar de linhas quando muda a liga (se estiver aberto)
+  useEffect(() => {
+    if (mostrarRadarLinhas) fetchRadarLinhas();
+  }, [ligaSelecionada]);
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -313,6 +337,141 @@ export default function RadarPage() {
           </div>
         )}
       </div>
+
+      {/* Radar de Linha — Toggle */}
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={toggleRadarLinhas}
+          className={cn(
+            'border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10',
+            mostrarRadarLinhas && 'bg-cyan-500/10 border-cyan-500/50'
+          )}
+        >
+          <BarChart3 className="h-4 w-4 mr-2" />
+          Radar de Linha
+        </Button>
+        {mostrarRadarLinhas && (
+          <Button variant="ghost" size="sm" onClick={fetchRadarLinhas} disabled={loadingLinhas} className="text-zinc-400 hover:text-white h-7 px-2">
+            <Radio className={cn('h-3.5 w-3.5', loadingLinhas && 'animate-spin')} />
+          </Button>
+        )}
+      </div>
+
+      {/* Radar de Linha — Conteudo */}
+      {mostrarRadarLinhas && (
+        <div className="space-y-4">
+          {loadingLinhas && !radarLinhas ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+            </div>
+          ) : radarLinhas ? (
+            <>
+              {/* Header info */}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-zinc-500">
+                  Assertividade baseada nas ultimas {radarLinhas.totalPartidas} partidas finalizadas
+                  {radarLinhas.liga !== 'TODAS' && ` (${formatLiga(radarLinhas.liga as Liga)})`}
+                </p>
+              </div>
+
+              {/* Grid de Linhas */}
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {radarLinhas.linhas.map((l) => {
+                  const tendConfig = {
+                    QUENTE: { bg: 'bg-green-500/10', border: 'border-green-500/30', text: 'text-green-400', label: 'QUENTE' },
+                    MORNA: { bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'MORNA' },
+                    FRIA: { bg: 'bg-red-500/10', border: 'border-red-500/30', text: 'text-red-400', label: 'FRIA' },
+                  };
+                  const tc = tendConfig[l.tendencia];
+                  const isOver = l.linha.includes('Over');
+                  const isUnder = l.linha.includes('Under');
+                  return (
+                    <div key={l.linha} className={cn('p-3 rounded-lg border', tc.bg, tc.border)}>
+                      {/* Nome da linha + tendencia */}
+                      <div className="flex items-center justify-between mb-2">
+                        <span className={cn('text-sm font-bold', isOver ? 'text-green-300' : isUnder ? 'text-blue-300' : 'text-white')}>{l.linha}</span>
+                        <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded', tc.text, tc.bg)}>{tc.label}</span>
+                      </div>
+
+                      {/* Taxa principal */}
+                      <div className="flex items-baseline gap-2 mb-2">
+                        <span className={cn('text-3xl font-black', l.taxa >= 70 ? 'text-green-400' : l.taxa >= 50 ? 'text-yellow-400' : 'text-red-400')}>{l.taxa}%</span>
+                        <span className="text-xs text-zinc-500">{l.pagou}/{l.total} pagou</span>
+                      </div>
+
+                      {/* Barra de progresso */}
+                      <div className="h-2 bg-zinc-800 rounded-full overflow-hidden mb-2">
+                        <div
+                          className={cn('h-full rounded-full transition-all',
+                            l.taxa >= 70 ? 'bg-green-500' : l.taxa >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                          )}
+                          style={{ width: `${l.taxa}%` }}
+                        />
+                      </div>
+
+                      {/* Sequencia visual (ultimos 20) */}
+                      <div className="flex gap-0.5 flex-wrap mb-1.5">
+                        {l.sequencia.map((r, i) => (
+                          <div
+                            key={i}
+                            className={cn('h-3 w-3 rounded-sm',
+                              r === 'GREEN' ? 'bg-green-500' : 'bg-red-500'
+                            )}
+                            title={`Partida ${i + 1}: ${r}`}
+                          />
+                        ))}
+                      </div>
+
+                      {/* Streak */}
+                      {l.streakAtual >= 2 && (
+                        <p className={cn('text-[10px] font-medium',
+                          l.streakTipo === 'GREEN' ? 'text-green-400' : 'text-red-400'
+                        )}>
+                          {l.streakAtual}x {l.streakTipo === 'GREEN' ? 'GREEN seguidos' : 'RED seguidos'}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Jogos ao vivo — status das linhas */}
+              {radarLinhas.aoVivo.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-cyan-400 flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    Linhas ao vivo ({radarLinhas.aoVivo.length} jogos)
+                  </p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {radarLinhas.aoVivo.map((av) => (
+                      <div key={av.partidaId} className="p-2.5 rounded-lg border border-zinc-700 bg-zinc-900/50">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-xs text-white font-medium truncate">
+                            {av.jogador1.match(/\(([^)]+)\)/)?.[1] || av.jogador1} vs {av.jogador2.match(/\(([^)]+)\)/)?.[1] || av.jogador2}
+                          </span>
+                          <span className="text-xs font-mono text-white">{av.placar.home}-{av.placar.away}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          {av.linhasPagas.map((lp) => (
+                            <span key={lp} className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/20 text-green-400 font-medium">{lp}</span>
+                          ))}
+                          {av.linhasPendentes.slice(0, 4).map((lp) => (
+                            <span key={lp} className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-500">{lp}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-xs text-zinc-500 text-center py-4">Erro ao carregar dados. Tente novamente.</p>
+          )}
+        </div>
+      )}
 
       {/* Legenda */}
       <div className="flex gap-3 text-sm font-medium">

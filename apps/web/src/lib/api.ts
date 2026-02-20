@@ -214,6 +214,35 @@ export interface AnaliseDetalhada {
   };
 }
 
+export interface RadarLinhaItem {
+  linha: string;
+  pagou: number;
+  total: number;
+  taxa: number;
+  tendencia: 'QUENTE' | 'MORNA' | 'FRIA';
+  sequencia: ('GREEN' | 'RED')[];
+  streakAtual: number;
+  streakTipo: 'GREEN' | 'RED';
+}
+
+export interface RadarLinhaAoVivo {
+  partidaId: string;
+  jogador1: string;
+  jogador2: string;
+  liga: Liga;
+  placar: { home: number; away: number };
+  golsHT: number;
+  linhasPagas: string[];
+  linhasPendentes: string[];
+}
+
+export interface RadarLinhasResponse {
+  linhas: RadarLinhaItem[];
+  aoVivo: RadarLinhaAoVivo[];
+  totalPartidas: number;
+  liga: string;
+}
+
 export const radarApi = {
   getPartidas: (liga?: Liga) => 
     api.get<RadarPartida[]>('/radar', { params: { liga } }),
@@ -229,6 +258,9 @@ export const radarApi = {
 
   buscarJogador: (nome: string) =>
     api.get<any[]>('/radar/jogador/busca', { params: { nome } }),
+
+  getLinhas: (liga?: Liga) =>
+    api.get<RadarLinhasResponse>('/radar/linhas', { params: { liga } }),
 };
 
 export type NivelConfianca = 'BAIXA' | 'MEDIA' | 'ALTA';
