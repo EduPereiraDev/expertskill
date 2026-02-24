@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { authApi, User } from '@/lib/api';
 
+// PROMO: setar true para dar EXPERT a todos os usuarios logados. Setar false para desativar.
+const PROMO_EXPERT_ALL = true;
+
+const applyPromo = (user: User | null): User | null => {
+  if (!user || !PROMO_EXPERT_ALL) return user;
+  return { ...user, plan: 'EXPERT' };
+};
+
 interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
@@ -24,7 +32,7 @@ export const useAuthStore = create<AuthState>()(
         const { data } = await authApi.login({ email, password });
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
-        set({ user: data.user, isAuthenticated: true });
+        set({ user: applyPromo(data.user), isAuthenticated: true });
       },
 
       register: async (email: string, password: string, name?: string) => {
@@ -50,7 +58,7 @@ export const useAuthStore = create<AuthState>()(
             return;
           }
           const { data } = await authApi.me();
-          set({ user: data, isAuthenticated: true, isLoading: false });
+          set({ user: applyPromo(data), isAuthenticated: true, isLoading: false });
         } catch {
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
@@ -59,12 +67,17 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setUser: (user: User) => {
-        set({ user });
+        set({ user: applyPromo(user) });
       },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({ user: state.user, isAuthenticated: state.isAuthenticated }),
+      merge: (persisted: any, current) => ({
+        ...current,
+        ...persisted,
+        user: applyPromo(persisted?.user ?? null),
+      }),
     }
   )
 );
