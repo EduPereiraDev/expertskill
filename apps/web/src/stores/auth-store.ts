@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { authApi, User } from '@/lib/api';
 
 // PROMO: setar true para dar EXPERT a todos os usuarios logados. Setar false para desativar.
-const PROMO_EXPERT_ALL = true;
+const PROMO_EXPERT_ALL = false;
 
 const applyPromo = (user: User | null): User | null => {
   if (!user || !PROMO_EXPERT_ALL) return user;
