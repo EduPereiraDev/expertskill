@@ -736,10 +736,15 @@ export default function RadarPage() {
                   {/* Header */}
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      {partida.status === 'AO_VIVO' && (
+                      {partida.status === 'AO_VIVO' ? (
                         <span className="flex items-center gap-1.5 text-green-400 text-xs font-medium">
                           <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                           AO VIVO
+                        </span>
+                      ) : partida.status === 'AGENDADA' && (
+                        <span className="flex items-center gap-1.5 text-blue-400 text-xs font-medium">
+                          <Clock className="h-3 w-3" />
+                          PRE-LIVE
                         </span>
                       )}
                       <span className={cn('text-xs font-medium', config.text)}>
@@ -945,10 +950,12 @@ export default function RadarPage() {
                   </DialogTitle>
                   <p className="text-sm text-zinc-400 px-6 pb-3">
                     {j1.nome} vs {j2.nome}
-                    {a.partida.status === 'AO_VIVO' && (
+                    {a.partida.status === 'AO_VIVO' ? (
                       <span className="ml-2 text-green-400 font-medium">
                         — <span className="inline-block h-2 w-2 rounded-full bg-green-400 animate-pulse mr-1" />Ao Vivo
                       </span>
+                    ) : a.partida.status === 'AGENDADA' && (
+                      <span className="ml-2 text-blue-400 font-medium">— Pre-Live</span>
                     )}
                   </p>
                   {/* Filtros de contexto da analise */}

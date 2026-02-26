@@ -115,12 +115,20 @@ export class RadarService {
   constructor(private prisma: PrismaService) {}
 
   async getPartidas(liga?: Liga, status?: StatusPartida): Promise<RadarPartida[]> {
-    // A finalização por liga + proteção de inplayIds já garante que só partidas realmente
-    // finalizadas saem de AO_VIVO. Não precisamos de filtro de tempo aqui.
+    // Incluir AO_VIVO + AGENDADAS nos proximos 5 minutos (pre-live)
+    const agora = new Date();
+    const em5Min = new Date(agora.getTime() + 5 * 60 * 1000);
+
     const partidas = await this.prisma.partida.findMany({
       where: {
         ...(liga && { liga }),
-        status: StatusPartida.AO_VIVO,
+        OR: [
+          { status: StatusPartida.AO_VIVO },
+          {
+            status: StatusPartida.AGENDADA,
+            dataHora: { gte: agora, lte: em5Min },
+          },
+        ],
       },
       include: {
         jogador1: true,
