@@ -1363,6 +1363,40 @@ export default function RadarPage() {
                       // Indice de Estabilidade (IE): 1 / media gols sofridos
                       const indiceEstabilidade = mediaGolsContra > 0 ? parseFloat((1 / mediaGolsContra).toFixed(2)) : 9.99;
 
+                      // Padroes ciclicos: detectar sequencias repetitivas (ex: Over-Over-Under)
+                      const overUnderSeq = p.slice(0, 15).map((g: any) => g.totalGols > 2 ? 'O' : 'U');
+                      const padraoCiclico: { padrao: string; repeticoes: number; tamanho: number } | null = (() => {
+                        for (const tam of [2, 3, 4]) {
+                          if (overUnderSeq.length < tam * 2) continue;
+                          const bloco = overUnderSeq.slice(0, tam).join('');
+                          let reps = 0;
+                          for (let i = 0; i <= overUnderSeq.length - tam; i += tam) {
+                            if (overUnderSeq.slice(i, i + tam).join('') === bloco) reps++;
+                            else break;
+                          }
+                          if (reps >= 3) {
+                            const labels = bloco.split('').map(c => c === 'O' ? 'Over' : 'Under').join('-');
+                            return { padrao: labels, repeticoes: reps, tamanho: tam };
+                          }
+                        }
+                        return null;
+                      })();
+
+                      // Quebra de padrao: se streak >= 4, verificar se o ultimo jogo quebrou
+                      const quebraPadrao: string | null = (() => {
+                        if (p.length < 5) return null;
+                        const ultimos5 = p.slice(0, 5).map((g: any) => g.totalGols > 2);
+                        const anteriores = ultimos5.slice(1);
+                        const todosOver = anteriores.every(v => v);
+                        const todosUnder = anteriores.every(v => !v);
+                        if (todosOver && !ultimos5[0]) return `Quebrou sequencia de ${anteriores.length} jogos Over — Under no ultimo jogo`;
+                        if (todosUnder && ultimos5[0]) return `Quebrou sequencia de ${anteriores.length} jogos Under — Over no ultimo jogo`;
+                        return null;
+                      })();
+
+                      // Sequencia visual dos ultimos jogos (O/U)
+                      const sequenciaVisual = p.slice(0, 10).map((g: any) => ({ over: g.totalGols > 2, gols: g.totalGols }));
+
                       return {
                         isVolta, mediaGols: mediaGols.toFixed(1), over25Pct, bttsPct, golNoHTPct,
                         postura, mediaGolsPro: mediaGolsPro.toFixed(1), mediaGolsContra: mediaGolsContra.toFixed(1),
@@ -1373,6 +1407,7 @@ export default function RadarPage() {
                         tendenciaGols, mediaRecente: mediaRecente.toFixed(1), mediaAntiga: mediaAntiga.toFixed(1),
                         cleanSheets, goleadas,
                         sofreu2maisPct, classificacao, indiceAgressividade, indiceEstabilidade,
+                        padraoCiclico, quebraPadrao, sequenciaVisual,
                       };
                     };
 
@@ -1895,20 +1930,51 @@ export default function RadarPage() {
                         })()}
 
                         {/* Padrões detectados */}
-                        <div className="mt-3 space-y-2">
-                          <p className="text-[10px] text-zinc-600 font-medium">Padroes detectados</p>
-                          <div className="grid grid-cols-2 gap-2">
+                        <div className="mt-3 p-3 bg-zinc-800/40 rounded-lg border border-zinc-700">
+                          <h4 className="text-[10px] text-cyan-400 font-semibold mb-3 flex items-center gap-1.5">
+                            <Target className="h-3.5 w-3.5" /> PADROES ESTATISTICOS
+                          </h4>
+                          <div className="grid grid-cols-2 gap-3">
                             {[analiseJ1, analiseJ2].map((an, idx) => {
                               const nome = idx === 0 ? nomeJ1 : nomeJ2;
                               return (
-                                <div key={idx} className="p-2 bg-zinc-900/40 rounded border border-zinc-800 space-y-1">
-                                  <p className="text-[10px] text-white font-medium">{nome}</p>
+                                <div key={idx} className="p-2.5 bg-zinc-900/60 rounded-lg border border-zinc-700 space-y-2">
+                                  <p className="text-xs text-white font-bold">{nome}</p>
+                                  {/* Sequencia visual dos ultimos jogos */}
+                                  <div>
+                                    <p className="text-[9px] text-zinc-500 mb-1">Ultimos jogos (recente → antigo)</p>
+                                    <div className="flex gap-0.5">
+                                      {an.sequenciaVisual.map((s: any, i: number) => (
+                                        <div key={i} className={cn(
+                                          'w-5 h-5 rounded text-[8px] font-bold flex items-center justify-center',
+                                          s.over ? 'bg-green-500/20 text-green-400 border border-green-500/30' : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                        )}>
+                                          {s.gols}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                  {/* Padrao ciclico */}
+                                  {an.padraoCiclico && (
+                                    <div className="p-1.5 bg-cyan-500/10 rounded border border-cyan-500/20">
+                                      <p className="text-[9px] text-cyan-400 font-semibold">Padrao ciclico detectado</p>
+                                      <p className="text-[10px] text-cyan-300 font-mono font-bold">{an.padraoCiclico.padrao}</p>
+                                      <p className="text-[9px] text-zinc-400">Repetiu {an.padraoCiclico.repeticoes}x consecutivas</p>
+                                    </div>
+                                  )}
+                                  {/* Quebra de padrao */}
+                                  {an.quebraPadrao && (
+                                    <div className="p-1.5 bg-orange-500/10 rounded border border-orange-500/20">
+                                      <p className="text-[9px] text-orange-400 font-semibold">Quebra de padrao</p>
+                                      <p className="text-[9px] text-orange-300">{an.quebraPadrao}</p>
+                                    </div>
+                                  )}
                                   {/* Streaks */}
                                   {an.streakOver >= 3 && (
-                                    <p className="text-[9px] text-green-400">Sequencia de {an.streakOver} jogos Over seguidos</p>
+                                    <p className="text-[9px] text-green-400 font-medium">Sequencia de {an.streakOver} jogos Over seguidos</p>
                                   )}
                                   {an.streakUnder >= 3 && (
-                                    <p className="text-[9px] text-red-400">Sequencia de {an.streakUnder} jogos Under seguidos</p>
+                                    <p className="text-[9px] text-red-400 font-medium">Sequencia de {an.streakUnder} jogos Under seguidos</p>
                                   )}
                                   {an.streakWin >= 3 && (
                                     <p className="text-[9px] text-green-400">Embalado: {an.streakWin} vitorias seguidas</p>
@@ -1934,6 +2000,26 @@ export default function RadarPage() {
                                       : an.consistencia === 'BAIXA' ? `Imprevisivel (desvio ${an.desvio}) — resultados oscilam muito`
                                       : `Consistencia media (desvio ${an.desvio})`}
                                   </p>
+                                  {/* Tabela de percentuais */}
+                                  <div className="pt-1.5 border-t border-zinc-800">
+                                    <p className="text-[9px] text-zinc-500 mb-1">Percentuais ({an.totalJogos}j)</p>
+                                    <div className="space-y-0.5">
+                                      {[
+                                        { label: 'Over 2.5', pct: an.over25Pct },
+                                        { label: 'Under 2.5', pct: 100 - an.over25Pct },
+                                        { label: 'BTTS', pct: an.bttsPct },
+                                        { label: 'Gol no HT', pct: an.golNoHTPct },
+                                      ].map(({ label, pct }) => (
+                                        <div key={label} className="flex items-center gap-1.5">
+                                          <span className="text-[8px] text-zinc-500 w-14">{label}</span>
+                                          <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                            <div className={cn('h-full rounded-full', pct >= 60 ? 'bg-green-500' : pct >= 40 ? 'bg-yellow-500' : 'bg-red-500')} style={{ width: `${pct}%` }} />
+                                          </div>
+                                          <span className={cn('text-[8px] font-bold w-8 text-right', pct >= 60 ? 'text-green-400' : pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>{pct}%</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
                                   {/* Placar mais frequente */}
                                   {an.placarMaisFreq.length > 0 && (
                                     <p className="text-[9px] text-zinc-500">
@@ -1946,7 +2032,6 @@ export default function RadarPage() {
                                       {an.anomaliaPct}% de anomalias ({an.anomalias} jogos fora do padrao)
                                     </p>
                                   )}
-                                  {/* Clean sheets e goleadas */}
                                   {an.cleanSheets >= 2 && (
                                     <p className="text-[9px] text-blue-400">{an.cleanSheets} clean sheets — defesa solida</p>
                                   )}
@@ -1957,11 +2042,42 @@ export default function RadarPage() {
                               );
                             })}
                           </div>
+                          {/* Tendencia dominante da grade */}
+                          {(() => {
+                            const over25Comb = (analiseJ1.over25Pct + analiseJ2.over25Pct) / 2;
+                            const bttsComb = (analiseJ1.bttsPct + analiseJ2.bttsPct) / 2;
+                            const htComb = (analiseJ1.golNoHTPct + analiseJ2.golNoHTPct) / 2;
+                            const tendDom = over25Comb >= 65 ? 'Over forte' : over25Comb <= 35 ? 'Under forte' : bttsComb >= 65 ? 'BTTS forte' : 'Sem tendencia clara';
+                            const temPadrao = over25Comb >= 65 || over25Comb <= 35 || bttsComb >= 65;
+                            return (
+                              <div className={cn('mt-3 p-2 rounded border', temPadrao ? 'bg-cyan-500/10 border-cyan-500/20' : 'bg-zinc-800/50 border-zinc-700')}>
+                                <div className="flex items-center justify-between">
+                                  <p className="text-[10px] text-cyan-400 font-semibold">Tendencia dominante</p>
+                                  <span className={cn('text-xs font-bold', temPadrao ? 'text-white' : 'text-zinc-400')}>{tendDom}</span>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 mt-2">
+                                  {[
+                                    { label: 'Over 2.5', pct: over25Comb },
+                                    { label: 'BTTS', pct: bttsComb },
+                                    { label: 'Gol no HT', pct: htComb },
+                                  ].map(({ label, pct }) => (
+                                    <div key={label} className="text-center">
+                                      <p className={cn('text-sm font-bold', pct >= 60 ? 'text-green-400' : pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>{pct.toFixed(0)}%</p>
+                                      <p className="text-[8px] text-zinc-500">{label}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                                {!temPadrao && (
+                                  <p className="text-[9px] text-zinc-500 mt-1">Sem padrao consistente identificado. Recomenda-se cautela ou aguardar ao vivo.</p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Sugestões de Mercado */}
                         <div className="mt-3 p-3 bg-gradient-to-b from-purple-900/20 to-zinc-900/60 rounded border border-purple-500/30">
-                          <p className="text-[10px] text-purple-400 font-semibold mb-3">🎯 Sugestoes de Mercado</p>
+                          <p className="text-[10px] text-purple-400 font-semibold mb-3 flex items-center gap-1.5"><Target className="h-3.5 w-3.5" /> Sugestoes de Mercado</p>
                           
                           {(() => {
                             const mediaTotal = parseFloat(analiseJ1.mediaGolsPro) + parseFloat(analiseJ1.mediaGolsContra) + parseFloat(analiseJ2.mediaGolsPro) + parseFloat(analiseJ2.mediaGolsContra);
@@ -2098,7 +2214,7 @@ export default function RadarPage() {
                                           s.tipo === 'alternativa' ? 'bg-zinc-700 text-zinc-300' :
                                           'bg-orange-500/20 text-orange-300'
                                         )}>
-                                          {s.tipo === 'principal' ? '★ Principal' : s.tipo === 'alternativa' ? 'Alternativa' : '⚡ Valor'}
+                                          {s.tipo === 'principal' ? 'PRINCIPAL' : s.tipo === 'alternativa' ? 'ALTERNATIVA' : 'VALOR'}
                                         </span>
                                         <span className="text-xs font-bold text-white">{s.mercado}</span>
                                       </div>
@@ -2138,7 +2254,7 @@ export default function RadarPage() {
 
                         {/* Contexto do jogo */}
                         <div className="mt-2 p-3 bg-zinc-900/40 rounded border border-zinc-700/50">
-                          <p className="text-[10px] text-zinc-500 font-semibold mb-2">📋 Contexto do jogo</p>
+                          <p className="text-[10px] text-zinc-500 font-semibold mb-2 flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Contexto do jogo</p>
                           <div className="space-y-1.5">
                             {(() => {
                               const insights: { text: string; type: 'positive' | 'negative' | 'neutral' | 'warning' }[] = [];
