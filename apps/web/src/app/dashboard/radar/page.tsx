@@ -2433,7 +2433,7 @@ export default function RadarPage() {
                   {/* Jogadores Stats + Ultimos Jogos */}
                   <div className="space-y-3">
                     <span className="text-sm text-zinc-400">Estatisticas dos Jogadores</span>
-                  <div className="grid md:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-3">
                     {[{ stats: j1, nome: nomeJ1, outroNome: nomeJ2, outroTime: timeJ2 }, { stats: j2, nome: nomeJ2, outroNome: nomeJ1, outroTime: timeJ1 }].map(({ stats, nome, outroNome, outroTime }, idx) => {
                       const partidasFiltradas = filtroH2H === 'jogador'
                         ? stats.ultimasPartidas.filter((p: any) => {
