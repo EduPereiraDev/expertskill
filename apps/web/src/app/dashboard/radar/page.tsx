@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,7 +8,7 @@ import { radarApi, RadarPartida, Liga, AnaliseDetalhada, RadarLinhasResponse } f
 import { useAuthStore } from '@/stores/auth-store';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap, Flame, ShieldAlert, Octagon, Search, X } from 'lucide-react';
+import { Radio, Lock, Check, Crown, CircleDot, Users, TrendingUp, Percent, Clock, BarChart3, Target, AlertTriangle, Zap, Flame, ShieldAlert, Octagon, Search, X, ChevronDown } from 'lucide-react';
 
 const ligas: { value: Liga | 'TODAS'; label: string }[] = [
   { value: 'TODAS', label: 'Todas' },
@@ -48,15 +48,19 @@ export default function RadarPage() {
   const [mostrarRadarLinhas, setMostrarRadarLinhas] = useState(false);
   const [linhasSelecionadas, setLinhasSelecionadas] = useState<string[]>([]);
   const [mostrarSeletorLinhas, setMostrarSeletorLinhas] = useState(false);
+  const [linhasAbertasCard, setLinhasAbertasCard] = useState<Record<string, boolean>>({});
+  const [scrollToJogadores, setScrollToJogadores] = useState(false);
+  const jogadoresRef = useRef<HTMLDivElement>(null);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
 
-  const abrirAnalise = async (partidaId: string) => {
+  const abrirAnalise = async (partidaId: string, focusJogadores = false) => {
     setLoadingAnalise(true);
+    setScrollToJogadores(focusJogadores);
     try {
       const { data } = await radarApi.getAnaliseDetalhada(partidaId);
       setAnaliseAberta(data);
-      setFiltroH2H('geral'); // Resetar filtro ao abrir nova analise
+      setFiltroH2H('geral');
     } catch (err) {
       console.error('Erro ao carregar análise:', err);
     } finally {
@@ -90,6 +94,15 @@ export default function RadarPage() {
     setMostrarRadarLinhas(next);
     if (next) fetchRadarLinhas(); // Sempre recarrega ao abrir
   };
+
+  useEffect(() => {
+    if (scrollToJogadores && analiseAberta && jogadoresRef.current) {
+      setTimeout(() => {
+        jogadoresRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setScrollToJogadores(false);
+      }, 300);
+    }
+  }, [scrollToJogadores, analiseAberta]);
 
   useEffect(() => {
     if (!isPro) return;
@@ -807,17 +820,59 @@ export default function RadarPage() {
                     </span>
                   </div>
 
-                  {/* Botão Analisar */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full mt-3 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                    onClick={() => abrirAnalise(partida.id)}
-                    disabled={loadingAnalise}
-                  >
-                    <BarChart3 className="h-4 w-4 mr-2" />
-                    {loadingAnalise ? 'Carregando...' : 'Analisar Detalhado'}
-                  </Button>
+                  {/* Linhas Abertas (expansível) */}
+                  <div className="mt-3">
+                    <button
+                      onClick={() => setLinhasAbertasCard(prev => ({ ...prev, [partida.id]: !prev[partida.id] }))}
+                      className="flex items-center justify-center gap-1.5 w-full text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors py-1"
+                    >
+                      <ChevronDown className={cn('h-3 w-3 transition-transform', linhasAbertasCard[partida.id] && 'rotate-180')} />
+                      LINHAS ABERTAS
+                    </button>
+                    {linhasAbertasCard[partida.id] && (
+                      <div className="mt-1.5 space-y-1 text-[11px]">
+                        {[
+                          { label: 'Over 0.5 HT', pct: ((partida.jogador1.percentualOver + partida.jogador2.percentualOver) / 2 * 0.85) },
+                          { label: 'Over 1.5 FT', pct: ((partida.jogador1.percentualOver + partida.jogador2.percentualOver) / 2 * 0.95) },
+                          { label: 'Over 2.5 FT', pct: partida.indicadores.overMedio },
+                          { label: 'BTTS', pct: partida.indicadores.overMedio * 0.8 },
+                        ].map(({ label, pct }) => {
+                          const p = Math.min(99, Math.round(pct));
+                          return (
+                            <div key={label} className="flex items-center gap-2 px-2 py-1 bg-zinc-900/50 rounded">
+                              <span className="text-zinc-400 w-20">{label}</span>
+                              <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                                <div className={cn('h-full rounded-full', p >= 65 ? 'bg-green-500' : p >= 45 ? 'bg-yellow-500' : 'bg-red-500')} style={{ width: `${p}%` }} />
+                              </div>
+                              <span className={cn('font-bold w-8 text-right', p >= 65 ? 'text-green-400' : p >= 45 ? 'text-yellow-400' : 'text-red-400')}>{p}%</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Botões Analisar */}
+                  <div className="flex gap-2 mt-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
+                      onClick={() => abrirAnalise(partida.id)}
+                      disabled={loadingAnalise}
+                    >
+                      {loadingAnalise ? 'Carregando...' : 'Analisar'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
+                      onClick={() => abrirAnalise(partida.id, true)}
+                      disabled={loadingAnalise}
+                    >
+                      {loadingAnalise ? '...' : 'Analisar + Times'}
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -2431,7 +2486,7 @@ export default function RadarPage() {
                   </div>
 
                   {/* Jogadores Stats + Ultimos Jogos */}
-                  <div className="space-y-3">
+                  <div ref={jogadoresRef} className="space-y-3">
                     <span className="text-sm text-zinc-400">Estatisticas dos Jogadores</span>
                   <div className="grid grid-cols-2 gap-3">
                     {[{ stats: j1, nome: nomeJ1, outroNome: nomeJ2, outroTime: timeJ2 }, { stats: j2, nome: nomeJ2, outroNome: nomeJ1, outroTime: timeJ1 }].map(({ stats, nome, outroNome, outroTime }, idx) => {
