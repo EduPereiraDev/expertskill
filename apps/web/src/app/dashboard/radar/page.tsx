@@ -1515,120 +1515,6 @@ export default function RadarPage() {
                       </div>
                     );
 
-                    const JogadorTatico = ({ nome, analise }: { nome: string; analise: any }) => (
-                      <div className="p-3 bg-zinc-900/60 rounded-lg border border-zinc-700">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm font-bold text-white">{nome}</span>
-                          <span className={cn('text-[10px] px-2 py-0.5 rounded-md font-semibold border', classificacaoColor(analise.classificacao))}>
-                            {classificacaoLabel(analise.classificacao)}
-                          </span>
-                        </div>
-                        <div className="space-y-3 text-xs">
-                          {/* Forca Ofensiva */}
-                          <div className="p-2 bg-green-500/5 rounded-lg border border-green-500/10">
-                            <p className="text-[10px] text-green-400 font-semibold mb-2">FORCA OFENSIVA</p>
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-zinc-400">Media gols/jogo:</span>
-                                <span className="text-white font-bold text-sm">{analise.mediaGols}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-zinc-400 w-20">Over 2.5:</span>
-                                <BarraProgresso valor={analise.over25Pct} cor={analise.over25Pct >= 60 ? 'bg-green-500' : analise.over25Pct >= 40 ? 'bg-yellow-500' : 'bg-red-500'} />
-                                <span className={cn('font-bold w-10 text-right', analise.over25Pct >= 60 ? 'text-green-400' : analise.over25Pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>{analise.over25Pct}%</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-zinc-400 w-20">Ambas marcam:</span>
-                                <BarraProgresso valor={analise.bttsPct} cor={analise.bttsPct >= 60 ? 'bg-green-500' : analise.bttsPct >= 40 ? 'bg-yellow-500' : 'bg-red-500'} />
-                                <span className={cn('font-bold w-10 text-right', analise.bttsPct >= 60 ? 'text-green-400' : analise.bttsPct >= 40 ? 'text-yellow-400' : 'text-red-400')}>{analise.bttsPct}%</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Defesa */}
-                          <div className="p-2 bg-red-500/5 rounded-lg border border-red-500/10">
-                            <p className="text-[10px] text-red-400 font-semibold mb-2">DEFESA</p>
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
-                                <span className="text-zinc-400">Media gols sofridos:</span>
-                                <span className={cn('font-bold text-sm', parseFloat(analise.mediaGolsContra) <= 1 ? 'text-green-400' : parseFloat(analise.mediaGolsContra) <= 2 ? 'text-yellow-400' : 'text-red-400')}>
-                                  {analise.mediaGolsContra}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <span className="text-zinc-400 w-20">Sofreu 2+:</span>
-                                <BarraProgresso valor={analise.sofreu2maisPct} cor={analise.sofreu2maisPct <= 30 ? 'bg-green-500' : analise.sofreu2maisPct <= 50 ? 'bg-yellow-500' : 'bg-red-500'} />
-                                <span className={cn('font-bold w-10 text-right', analise.sofreu2maisPct <= 30 ? 'text-green-400' : analise.sofreu2maisPct <= 50 ? 'text-yellow-400' : 'text-red-400')}>{analise.sofreu2maisPct}%</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Perfil de Jogo */}
-                          <div className="p-2 bg-purple-500/5 rounded-lg border border-purple-500/10">
-                            <p className="text-[10px] text-purple-400 font-semibold mb-2">PERFIL DE JOGO</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-zinc-400">Faz / Sofre:</span>
-                              <span className="text-white font-bold">{analise.mediaGolsPro} / {analise.mediaGolsContra}</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 mt-1">
-                              {analise.classificacao === 'AGRESSIVO'
-                                ? 'Media +3 gols por jogo — jogos muito movimentados'
-                                : analise.classificacao === 'EQUILIBRADO'
-                                ? '2 a 3 gols por jogo — perfil moderado'
-                                : 'Under forte — jogos tendem a ser fechados'}
-                            </p>
-                          </div>
-
-                          {/* ML */}
-                          <div className="p-2 bg-zinc-800/40 rounded-lg border border-zinc-700">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-zinc-400">ML recente ({analise.totalJogos}j):</span>
-                              <span className="font-bold">
-                                <span className="text-green-400">{analise.vitorias}V</span> / <span className="text-red-400">{analise.derrotas}D</span>
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-2.5 bg-zinc-800 rounded-full overflow-hidden flex">
-                                <div className="h-full bg-green-500 rounded-l-full" style={{ width: `${analise.winRate}%` }} />
-                                <div className="h-full bg-red-500 rounded-r-full" style={{ width: `${Math.round((analise.derrotas / analise.totalJogos) * 100)}%` }} />
-                              </div>
-                              <span className="text-[10px] text-zinc-400 font-medium">{analise.winRate}%</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 mt-1">
-                              {analise.winRate >= 70 ? 'Dominante — pressiona adversarios e abre jogos'
-                                : analise.winRate >= 50 ? 'Vence mais do que perde — confiavel'
-                                : analise.winRate >= 30 ? 'Fase irregular — resultados imprevisiveis'
-                                : 'Fase ruim — pode jogar retrancado ou desmotivado'}
-                            </p>
-                          </div>
-
-                          {/* Ritmo tático */}
-                          <div className="p-2 bg-zinc-800/40 rounded-lg border border-zinc-700">
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-zinc-400">Ritmo tatico:</span>
-                              <span className={cn('font-bold',
-                                analise.mudancaTatica === 'FORTE_INICIO' ? 'text-orange-400' :
-                                analise.mudancaTatica === 'CRESCE_NO_JOGO' ? 'text-blue-400' : 'text-zinc-300'
-                              )}>{taticaLabel(analise.mudancaTatica)}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-blue-400 font-medium">HT</span>
-                              <div className="flex-1 h-2.5 bg-zinc-800 rounded-full overflow-hidden flex">
-                                <div className="h-full bg-blue-500 rounded-l-full" style={{ width: `${analise.pctHT}%` }} />
-                                <div className="h-full bg-purple-500 rounded-r-full" style={{ width: `${100 - analise.pctHT}%` }} />
-                              </div>
-                              <span className="text-[10px] text-purple-400 font-medium">2T</span>
-                            </div>
-                            <p className="text-[10px] text-zinc-500 mt-1">
-                              {analise.pctHT >= 65 ? `${analise.pctHT}% dos gols no 1T — comeca agressivo`
-                                : analise.pctHT <= 35 ? `So ${analise.pctHT}% no 1T — esquenta no 2T`
-                                : `Equilibrado (${analise.pctHT}% HT / ${100 - analise.pctHT}% 2T)`}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    );
-
                     return (
                       <div className="p-4 bg-zinc-800/40 rounded-lg border border-zinc-700">
                         <h3 className="text-sm font-semibold text-purple-400 mb-1 flex items-center gap-2">
@@ -1655,10 +1541,6 @@ export default function RadarPage() {
                               ? 'Ambos em fase Under'
                               : 'Fases distintas'}
                           </span>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <JogadorTatico nome={nomeJ1} analise={analiseJ1} />
-                          <JogadorTatico nome={nomeJ2} analise={analiseJ2} />
                         </div>
 
                         {/* Veredito: quem leva vantagem + Over ou Under */}
@@ -2631,7 +2513,7 @@ export default function RadarPage() {
                             <span className="w-12 text-center">FT</span>
                             <span className="w-12 text-center">Total</span>
                           </div>
-                          {partidasFiltradas.slice(0, filtroH2H === 'time' ? 6 : 15).map((p: any, i: number) => (
+                          {partidasFiltradas.slice(0, 20).map((p: any, i: number) => (
                             <div key={i} className="flex items-center text-xs px-1.5 py-1 bg-zinc-900/50 rounded-md gap-2 border border-zinc-800/50">
                               <span className="text-white truncate flex-1 font-medium">{p.adversario}</span>
                               <span className="text-zinc-300 font-mono w-12 text-center">{p.golsHT}-{p.golsHTContra || 0}</span>
