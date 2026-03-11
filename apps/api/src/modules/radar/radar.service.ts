@@ -434,7 +434,7 @@ export class RadarService {
     return 'EVITAR';
   }
 
-  async getAnaliseDetalhada(partidaId: string): Promise<AnaliseDetalhada> {
+  async getAnaliseDetalhada(partidaId: string, contexto: ContextoAnalise = 'HISTORICO'): Promise<AnaliseDetalhada> {
     const partida = await this.prisma.partida.findUnique({
       where: { id: partidaId },
       include: { jogador1: true, jogador2: true },
@@ -446,9 +446,8 @@ export class RadarService {
 
     const radarPartida = this.mapPartidaToRadar(partida);
 
-    // Analise detalhada usa contexto HISTORICO — precisao critica para recomendacoes
-    const jogador1Stats = await this.getJogadorStats(partida.jogador1, partida.jogador1Id, 'HISTORICO');
-    const jogador2Stats = await this.getJogadorStats(partida.jogador2, partida.jogador2Id, 'HISTORICO');
+    const jogador1Stats = await this.getJogadorStats(partida.jogador1, partida.jogador1Id, contexto);
+    const jogador2Stats = await this.getJogadorStats(partida.jogador2, partida.jogador2Id, contexto);
 
     // Buscar confrontos diretos (H2H)
     const h2h = await this.getH2H(partida.jogador1Id, partida.jogador2Id, partida.jogador1.nome, partida.jogador2.nome);
@@ -493,6 +492,10 @@ export class RadarService {
     }
 
     const limite = LIMITE_PARTIDAS[contexto];
+    // DIARIO: filtra apenas partidas das ultimas 24h
+    const whereDate = contexto === 'DIARIO'
+      ? { dataHora: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } }
+      : {};
     const partidas = await this.prisma.partida.findMany({
       where: {
         OR: [
@@ -500,6 +503,7 @@ export class RadarService {
           { jogador2Id: { in: jogadorIds } },
         ],
         status: StatusPartida.FINALIZADA,
+        ...whereDate,
       },
       include: { jogador1: true, jogador2: true },
       orderBy: { dataHora: 'desc' },

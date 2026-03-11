@@ -54,11 +54,11 @@ export default function RadarPage() {
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
 
-  const abrirAnalise = async (partidaId: string, focusJogadores = false) => {
+  const abrirAnalise = async (partidaId: string, focusJogadores = false, contexto: 'DIARIO' | 'HISTORICO' = 'DIARIO') => {
     setLoadingAnalise(true);
     setScrollToJogadores(focusJogadores);
     try {
-      const { data } = await radarApi.getAnaliseDetalhada(partidaId);
+      const { data } = await radarApi.getAnaliseDetalhada(partidaId, contexto);
       setAnaliseAberta(data);
       setFiltroH2H('geral');
     } catch (err) {
@@ -858,7 +858,7 @@ export default function RadarPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1 border-green-500/30 text-green-400 hover:bg-green-500/10"
-                      onClick={() => abrirAnalise(partida.id)}
+                      onClick={() => abrirAnalise(partida.id, false, 'DIARIO')}
                       disabled={loadingAnalise}
                     >
                       {loadingAnalise ? 'Carregando...' : 'Analisar'}
@@ -867,7 +867,7 @@ export default function RadarPage() {
                       variant="outline"
                       size="sm"
                       className="flex-1 border-purple-500/30 text-purple-400 hover:bg-purple-500/10"
-                      onClick={() => abrirAnalise(partida.id, true)}
+                      onClick={() => abrirAnalise(partida.id, true, 'HISTORICO')}
                       disabled={loadingAnalise}
                     >
                       {loadingAnalise ? '...' : 'Analisar + Times'}

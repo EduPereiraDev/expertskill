@@ -38,7 +38,10 @@ export class RadarController {
   }
 
   @Get('analise/:id')
-  getAnaliseDetalhada(@Param('id') partidaId: string) {
-    return this.radarService.getAnaliseDetalhada(partidaId);
+  getAnaliseDetalhada(
+    @Param('id') partidaId: string,
+    @Query('contexto') contexto?: 'DIARIO' | 'HISTORICO',
+  ) {
+    return this.radarService.getAnaliseDetalhada(partidaId, contexto || 'HISTORICO');
   }
 }

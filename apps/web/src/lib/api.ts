@@ -256,8 +256,8 @@ export const radarApi = {
   getAoVivo: () => 
     api.get<RadarPartida[]>('/radar/ao-vivo'),
 
-  getAnaliseDetalhada: (partidaId: string) =>
-    api.get<AnaliseDetalhada>(`/radar/analise/${partidaId}`),
+  getAnaliseDetalhada: (partidaId: string, contexto: 'DIARIO' | 'HISTORICO' = 'HISTORICO') =>
+    api.get<AnaliseDetalhada>(`/radar/analise/${partidaId}?contexto=${contexto}`),
 
   buscarJogador: (nome: string) =>
     api.get<any[]>('/radar/jogador/busca', { params: { nome } }),
