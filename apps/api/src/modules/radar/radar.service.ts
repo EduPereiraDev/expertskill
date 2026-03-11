@@ -420,13 +420,13 @@ export class RadarService {
     overMedio: number,
     probOver: number
   ): 'OPERAR' | 'CAUTELA' | 'EVITAR' {
-    // OPERAR: Top ~30% — média alta E over alto
-    if (mediaTotal >= 5 && overMedio >= 80) {
+    // OPERAR: Confronto forte — media alta E over consistente
+    if (mediaTotal >= 5 && overMedio >= 65) {
       return 'OPERAR';
     }
     
     // CAUTELA: Perfil moderado
-    if (mediaTotal >= 3 && overMedio >= 60) {
+    if (mediaTotal >= 3.5 && overMedio >= 50) {
       return 'CAUTELA';
     }
     
@@ -554,9 +554,14 @@ export class RadarService {
     // Contagem simples — ponderacao por time distorcia os percentuais
     const count = ultimasPartidas.length || 1;
 
-    const totalGolsHT = ultimasPartidas.reduce((acc, p) => acc + p.golsHT, 0);
     const totalGolsFT = ultimasPartidas.reduce((acc, p) => acc + p.golsFT, 0);
     const totalGolsSofridos = ultimasPartidas.reduce((acc, p) => acc + p.golsContra, 0);
+
+    // HT: filtrar apenas partidas com dados de HT reais (nao-null)
+    // Partidas sem HT (null no banco) teriam totalGolsHT=0 e distorceriam stats
+    const partidasComHT = ultimasPartidas.filter(p => p.totalGolsHT !== null && p.totalGolsHT !== undefined);
+    const countHT = partidasComHT.length || 1;
+    const totalGolsHT = partidasComHT.reduce((acc, p) => acc + p.golsHT, 0);
 
     // Calcular streak de Over/Under
     let streakOver = 0;
@@ -571,9 +576,9 @@ export class RadarService {
       }
     }
 
-    // Calcular percentuais de linhas (contagem simples)
-    const over15HT = ultimasPartidas.filter(p => (p.totalGolsHT || 0) > 1).length;
-    const over05HT = ultimasPartidas.filter(p => (p.totalGolsHT || 0) > 0).length;
+    // Calcular percentuais de linhas HT (usando apenas partidas COM dados de HT)
+    const over15HT = partidasComHT.filter(p => (p.totalGolsHT || 0) > 1).length;
+    const over05HT = partidasComHT.filter(p => (p.totalGolsHT || 0) > 0).length;
     const bttsCount = ultimasPartidas.filter(p => p.btts).length;
 
     // Maior goleada
@@ -603,21 +608,21 @@ export class RadarService {
       nome: nomeJogador,
       nomeCompleto: jogador.nome,
       ultimasPartidas,
-      mediaGolsHT: useCalculated ? totalGolsHT / count : (jogador.mediaGolsHT || totalGolsHT / count),
+      mediaGolsHT: useCalculated ? totalGolsHT / countHT : (jogador.mediaGolsHT || totalGolsHT / countHT),
       mediaGolsFT: useCalculated ? totalGolsFT / count : (jogador.mediaGolsFT || totalGolsFT / count),
       percentualOver: useCalculated ? (over25Count / count) * 100 : jogador.percentualOver,
       percentual0x0: useCalculated ? (zeroZeroCount / count) * 100 : jogador.percentual0x0,
       golsPorTempo: {
-        ht: totalGolsHT / count,
-        segundoTempo: (totalGolsFT - totalGolsHT) / count,
+        ht: totalGolsHT / countHT,
+        segundoTempo: (totalGolsFT / count) - (totalGolsHT / countHT),
       },
       sequencia: ultimasPartidas.slice(0, 5).map(p => p.resultado),
       // Novas métricas
       streakOver,
       streakUnder,
       mediaGolsSofridos: totalGolsSofridos / count,
-      percentualOver15HT: (over15HT / count) * 100,
-      percentualOver05HT: (over05HT / count) * 100,
+      percentualOver15HT: (over15HT / countHT) * 100,
+      percentualOver05HT: (over05HT / countHT) * 100,
       percentualBTTS: (bttsCount / count) * 100,
       maiorGoleada: { pro: maiorPro, contra: maiorContra },
       consistencia,

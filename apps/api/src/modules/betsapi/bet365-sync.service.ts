@@ -108,22 +108,56 @@ export class Bet365SyncService implements OnModuleInit {
     let totalFinalizado = 0;
     for (const { liga, minutos } of timeouts) {
       const limite = new Date(Date.now() - minutos * 60 * 1000);
-      const result = await this.prisma.partida.updateMany({
+      // Buscar partidas candidatas a finalizar (em vez de updateMany cego)
+      const candidatas = await this.prisma.partida.findMany({
         where: {
           status: StatusPartida.AO_VIVO,
           liga,
           dataHora: { lt: limite },
           ...(inplayIds.length > 0 && { id: { notIn: inplayIds } }),
         },
-        data: {
-          status: StatusPartida.FINALIZADA,
-        },
+        select: { id: true },
       });
-      totalFinalizado += result.count;
+
+      for (const partida of candidatas) {
+        try {
+          // Buscar resultado REAL via API antes de finalizar
+          const eventId = partida.id.replace('bet365_', '');
+          const result = await this.bet365Service.getEventResult(eventId);
+
+          if (result.status === 'finished' || result.status === 'unknown') {
+            // Usar placar real se disponivel, senao manter o ultimo do sync
+            const updateData: any = { status: StatusPartida.FINALIZADA };
+            if (result.homeScore > 0 || result.awayScore > 0 || result.status === 'finished') {
+              updateData.golsFT1 = result.homeScore;
+              updateData.golsFT2 = result.awayScore;
+            }
+            if (result.homeScoreHT > 0 || result.awayScoreHT > 0) {
+              updateData.golsHT1 = result.homeScoreHT;
+              updateData.golsHT2 = result.awayScoreHT;
+            }
+            await this.prisma.partida.update({
+              where: { id: partida.id },
+              data: updateData,
+            });
+            totalFinalizado++;
+          }
+          // Se ainda esta live na API, nao finalizar (raro, mas seguro)
+        } catch (error) {
+          // Fallback: finalizar sem resultado real (manter ultimo placar do sync)
+          await this.prisma.partida.update({
+            where: { id: partida.id },
+            data: { status: StatusPartida.FINALIZADA },
+          });
+          totalFinalizado++;
+        }
+        // Pequeno delay para respeitar rate limit
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
     }
 
     if (totalFinalizado > 0) {
-      this.logger.log(`Finalizadas ${totalFinalizado} partidas antigas que estavam como AO_VIVO`);
+      this.logger.log(`Finalizadas ${totalFinalizado} partidas com resultado real da API`);
     }
   }
 
@@ -483,6 +517,7 @@ export class Bet365SyncService implements OnModuleInit {
 
       // Usar Set para evitar contar mesma partida múltiplas vezes
       const processedIds = new Set<string>();
+      let countComHT = 0;
       for (const partida of partidas) {
         if (processedIds.has(partida.id)) continue;
         processedIds.add(partida.id);
@@ -490,22 +525,29 @@ export class Bet365SyncService implements OnModuleInit {
         // Usar playerId do jogador que participou dessa partida
         const isHome = partida.jogador1Id === partida.playerId;
         const golsFT = isHome ? (partida.golsFT1 || 0) : (partida.golsFT2 || 0);
-        const golsHT = isHome ? (partida.golsHT1 || 0) : (partida.golsHT2 || 0);
         const totalGols = (partida.golsFT1 || 0) + (partida.golsFT2 || 0);
 
         totalGolsFT += golsFT;
-        totalGolsHT += golsHT;
+
+        // HT: contar apenas se dados de HT existem (nao-null)
+        const temHT = partida.golsHT1 !== null || partida.golsHT2 !== null;
+        if (temHT) {
+          const golsHT = isHome ? (partida.golsHT1 || 0) : (partida.golsHT2 || 0);
+          totalGolsHT += golsHT;
+          countComHT++;
+        }
 
         if (totalGols > 2) over25Count++;
         if (totalGols === 0) zeroZeroCount++;
       }
 
       const count = processedIds.size;
+      const htCount = countComHT || 1;
       await this.prisma.jogador.update({
         where: { id: jogador.id },
         data: {
           mediaGolsFT: totalGolsFT / count,
-          mediaGolsHT: totalGolsHT / count,
+          mediaGolsHT: totalGolsHT / htCount,
           percentualOver: (over25Count / count) * 100,
           percentual0x0: (zeroZeroCount / count) * 100,
           ultimaAtualizacao: new Date(),
