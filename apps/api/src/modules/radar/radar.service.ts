@@ -11,7 +11,7 @@ export type ContextoAnalise = 'DIARIO' | 'HISTORICO';
 
 const LIMITE_PARTIDAS: Record<ContextoAnalise, number> = {
   DIARIO: 15,
-  HISTORICO: 30,
+  HISTORICO: 40,
 };
 
 export interface RadarPartida {
@@ -547,15 +547,12 @@ export class RadarService {
       };
     });
 
-    // Ponderacao: partidas do time atual valem peso 2, outros times peso 1
-    // Isso garante que a analise reflete mais o desempenho no time atual
-    const pesos = ultimasPartidas.map(p => p.mesmoTime ? 2 : 1);
-    const pesoTotal = pesos.reduce((a, b) => a + b, 0) || 1;
+    // Contagem simples — ponderacao por time distorcia os percentuais
     const count = ultimasPartidas.length || 1;
 
-    const totalGolsHT = ultimasPartidas.reduce((acc, p, i) => acc + p.golsHT * pesos[i], 0);
-    const totalGolsFT = ultimasPartidas.reduce((acc, p, i) => acc + p.golsFT * pesos[i], 0);
-    const totalGolsSofridos = ultimasPartidas.reduce((acc, p, i) => acc + p.golsContra * pesos[i], 0);
+    const totalGolsHT = ultimasPartidas.reduce((acc, p) => acc + p.golsHT, 0);
+    const totalGolsFT = ultimasPartidas.reduce((acc, p) => acc + p.golsFT, 0);
+    const totalGolsSofridos = ultimasPartidas.reduce((acc, p) => acc + p.golsContra, 0);
 
     // Calcular streak de Over/Under
     let streakOver = 0;
@@ -570,10 +567,10 @@ export class RadarService {
       }
     }
 
-    // Calcular percentuais de linhas (ponderados por time)
-    const over15HT = ultimasPartidas.reduce((acc, p, i) => acc + ((p.totalGolsHT || 0) > 1 ? pesos[i] : 0), 0);
-    const over05HT = ultimasPartidas.reduce((acc, p, i) => acc + ((p.totalGolsHT || 0) > 0 ? pesos[i] : 0), 0);
-    const bttsCount = ultimasPartidas.reduce((acc, p, i) => acc + (p.btts ? pesos[i] : 0), 0);
+    // Calcular percentuais de linhas (contagem simples)
+    const over15HT = ultimasPartidas.filter(p => (p.totalGolsHT || 0) > 1).length;
+    const over05HT = ultimasPartidas.filter(p => (p.totalGolsHT || 0) > 0).length;
+    const bttsCount = ultimasPartidas.filter(p => p.btts).length;
 
     // Maior goleada
     let maiorPro = 0, maiorContra = 0;
@@ -582,9 +579,9 @@ export class RadarService {
       if (p.golsContra > maiorContra) maiorContra = p.golsContra;
     }
 
-    // Consistência (variação ponderada nos gols)
-    const mediaP = totalGolsFT / pesoTotal;
-    const varPond = ultimasPartidas.reduce((acc, p, i) => acc + pesos[i] * Math.pow(p.golsFT - mediaP, 2), 0) / pesoTotal;
+    // Consistência (variação nos gols)
+    const mediaP = totalGolsFT / count;
+    const varPond = ultimasPartidas.reduce((acc, p) => acc + Math.pow(p.golsFT - mediaP, 2), 0) / count;
     const desvio = Math.sqrt(varPond);
     let consistencia: 'ALTA' | 'MEDIA' | 'BAIXA' = 'MEDIA';
     if (desvio < 0.8) consistencia = 'ALTA';
@@ -593,31 +590,31 @@ export class RadarService {
     // Retornar nickname como nome principal
     const nomeJogador = nickname || jogador.nome;
 
-    // Percentuais ponderados: time atual pesa 2x
-    const over25Pond = ultimasPartidas.reduce((acc, p, i) => acc + (p.over25 ? pesos[i] : 0), 0);
-    const zeroZeroPond = ultimasPartidas.reduce((acc, p, i) => acc + (p.totalGols === 0 ? pesos[i] : 0), 0);
+    // Percentuais simples
+    const over25Count = ultimasPartidas.filter(p => p.over25).length;
+    const zeroZeroCount = ultimasPartidas.filter(p => p.totalGols === 0).length;
     const useCalculated = contexto === 'HISTORICO' && ultimasPartidas.length >= 5;
 
     return {
       nome: nomeJogador,
       nomeCompleto: jogador.nome,
       ultimasPartidas,
-      mediaGolsHT: useCalculated ? totalGolsHT / pesoTotal : (jogador.mediaGolsHT || totalGolsHT / pesoTotal),
-      mediaGolsFT: useCalculated ? totalGolsFT / pesoTotal : (jogador.mediaGolsFT || totalGolsFT / pesoTotal),
-      percentualOver: useCalculated ? (over25Pond / pesoTotal) * 100 : jogador.percentualOver,
-      percentual0x0: useCalculated ? (zeroZeroPond / pesoTotal) * 100 : jogador.percentual0x0,
+      mediaGolsHT: useCalculated ? totalGolsHT / count : (jogador.mediaGolsHT || totalGolsHT / count),
+      mediaGolsFT: useCalculated ? totalGolsFT / count : (jogador.mediaGolsFT || totalGolsFT / count),
+      percentualOver: useCalculated ? (over25Count / count) * 100 : jogador.percentualOver,
+      percentual0x0: useCalculated ? (zeroZeroCount / count) * 100 : jogador.percentual0x0,
       golsPorTempo: {
-        ht: totalGolsHT / pesoTotal,
-        segundoTempo: (totalGolsFT - totalGolsHT) / pesoTotal,
+        ht: totalGolsHT / count,
+        segundoTempo: (totalGolsFT - totalGolsHT) / count,
       },
       sequencia: ultimasPartidas.slice(0, 5).map(p => p.resultado),
       // Novas métricas
       streakOver,
       streakUnder,
-      mediaGolsSofridos: totalGolsSofridos / pesoTotal,
-      percentualOver15HT: (over15HT / pesoTotal) * 100,
-      percentualOver05HT: (over05HT / pesoTotal) * 100,
-      percentualBTTS: (bttsCount / pesoTotal) * 100,
+      mediaGolsSofridos: totalGolsSofridos / count,
+      percentualOver15HT: (over15HT / count) * 100,
+      percentualOver05HT: (over05HT / count) * 100,
+      percentualBTTS: (bttsCount / count) * 100,
       maiorGoleada: { pro: maiorPro, contra: maiorContra },
       consistencia,
     };
