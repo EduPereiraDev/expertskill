@@ -1168,25 +1168,13 @@ export default function RadarPage() {
                           <Users className="h-4 w-4" /> ANÁLISE DE CONFRONTO
                         </h3>
                         <div className="space-y-3">
-                          {/* GERAL: stats gerais de cada jogador (todas partidas) */}
+                          {/* GERAL: confrontos por time + por jogador */}
                           {filtroH2H === 'geral' && (
                             <>
                               <div className="grid grid-cols-2 gap-3">
-                                <StatsCard title={`${nomeJ1} (geral)`} stats={calcStats(j1.ultimasPartidas)} color="text-blue-400" />
-                                <StatsCard title={`${nomeJ2} (geral)`} stats={calcStats(j2.ultimasPartidas)} color="text-blue-400" />
+                                <StatsCard title={`Por time: ${timeJ1} vs ${timeJ2}`} stats={statsTime} color="text-blue-400" />
+                                <StatsCard title={`Por jogador: ${nomeJ1} vs ${nomeJ2}`} stats={statsPlayer} color="text-purple-400" />
                               </div>
-                              {statsTime && statsPlayer && (
-                                <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
-                                  <p className="text-[10px] text-zinc-600 mb-1">Comparativo: Time vs Jogador</p>
-                                  <p className="text-[10px] text-zinc-400">
-                                    {statsTime.over25Pct > statsPlayer.over25Pct + 15
-                                      ? `Os times (${statsTime.over25Pct}%) fazem mais Over que os jogadores entre si (${statsPlayer.over25Pct}%). O time influencia mais.`
-                                      : statsPlayer.over25Pct > statsTime.over25Pct + 15
-                                      ? `Os jogadores (${statsPlayer.over25Pct}%) fazem mais Over que os times (${statsTime.over25Pct}%). O estilo do jogador pesa mais.`
-                                      : `Times (${statsTime.over25Pct}%) e jogadores (${statsPlayer.over25Pct}%) tem tendencia similar. Confronto consistente.`}
-                                  </p>
-                                </div>
-                              )}
                             </>
                           )}
 
