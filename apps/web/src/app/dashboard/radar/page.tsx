@@ -1036,9 +1036,9 @@ export default function RadarPage() {
                     ))}
                   </div>
                   <p className="text-[10px] text-zinc-600 px-6 -mt-2 pb-2">
-                    {filtroH2H === 'geral' && 'Stats gerais — % de todas as partidas contra qualquer adversario'}
-                    {filtroH2H === 'time' && `Stats por time — % filtrada por partidas contra ${timeJ2} e ${timeJ1}`}
-                    {filtroH2H === 'jogador' && `So confrontos — % filtrada por partidas entre ${nomeJ1} e ${nomeJ2}`}
+                    {filtroH2H === 'geral' && `Stats gerais — ultimas 40 partidas de cada jogador`}
+                    {filtroH2H === 'time' && `Stats por time — partidas de ${nomeJ1} vs ${timeJ2} e ${nomeJ2} vs ${timeJ1}`}
+                    {filtroH2H === 'jogador' && `So confrontos diretos — ${nomeJ1} vs ${nomeJ2}`}
                   </p>
                 </DialogHeader>
                 <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -1168,12 +1168,12 @@ export default function RadarPage() {
                           <Users className="h-4 w-4" /> ANÁLISE DE CONFRONTO
                         </h3>
                         <div className="space-y-3">
-                          {/* GERAL: mostra ambos lado a lado */}
+                          {/* GERAL: stats gerais de cada jogador (todas partidas) */}
                           {filtroH2H === 'geral' && (
                             <>
                               <div className="grid grid-cols-2 gap-3">
-                                <StatsCard title={`Por time: ${timeJ1} vs ${timeJ2}`} stats={statsTime} color="text-blue-400" />
-                                <StatsCard title={`Por jogador: ${nomeJ1} vs ${nomeJ2}`} stats={statsPlayer} color="text-purple-400" />
+                                <StatsCard title={`${nomeJ1} (geral)`} stats={calcStats(j1.ultimasPartidas)} color="text-blue-400" />
+                                <StatsCard title={`${nomeJ2} (geral)`} stats={calcStats(j2.ultimasPartidas)} color="text-blue-400" />
                               </div>
                               {statsTime && statsPlayer && (
                                 <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
@@ -1190,15 +1190,15 @@ export default function RadarPage() {
                             </>
                           )}
 
-                          {/* POR TIME: stats individuais de cada jogador (todas partidas) */}
+                          {/* POR TIME: stats filtradas por partidas contra o time adversario */}
                           {filtroH2H === 'time' && (
                             <>
                               <div className="grid grid-cols-2 gap-3">
-                                <StatsCard title={`${j1.nome} (geral)`} stats={calcStats(j1.ultimasPartidas)} color="text-blue-400" />
-                                <StatsCard title={`${j2.nome} (geral)`} stats={calcStats(j2.ultimasPartidas)} color="text-blue-400" />
+                                <StatsCard title={`${nomeJ1} vs ${timeJ2}`} stats={calcStats(j1ComTime)} color="text-blue-400" />
+                                <StatsCard title={`${nomeJ2} vs ${timeJ1}`} stats={calcStats(j2ComTime)} color="text-blue-400" />
                               </div>
                               {statsTime && (
-                                <StatsCard title={`Quando ${timeJ1} enfrenta ${timeJ2} (qualquer jogador)`} stats={statsTime} color="text-cyan-400" />
+                                <StatsCard title={`${timeJ1} vs ${timeJ2} (qualquer jogador)`} stats={statsTime} color="text-cyan-400" />
                               )}
                               {!statsTime && (
                                 <div className="p-2 bg-zinc-900/40 rounded border border-zinc-800">
@@ -2196,62 +2196,6 @@ export default function RadarPage() {
                           })()}
                         </div>
 
-                        {/* Contexto do jogo */}
-                        <div className="mt-2 p-3 bg-zinc-900/40 rounded border border-zinc-700/50">
-                          <p className="text-[10px] text-zinc-500 font-semibold mb-2 flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> Contexto do jogo</p>
-                          <div className="space-y-1.5">
-                            {(() => {
-                              const insights: { text: string; type: 'positive' | 'negative' | 'neutral' | 'warning' }[] = [];
-
-                              if (analiseJ1.isVolta || analiseJ2.isVolta) {
-                                insights.push({ text: 'Jogo de volta — jogadores ja se conhecem. Quem perdeu tende a atacar mais.', type: 'neutral' });
-                              } else {
-                                insights.push({ text: 'Jogo de ida — primeiro confronto recente.', type: 'neutral' });
-                              }
-
-                              if (analiseJ1.streakOver >= 3 && analiseJ2.streakOver >= 3) {
-                                insights.push({ text: `Ambos em sequencia Over (${nomeJ1}: ${analiseJ1.streakOver}x, ${nomeJ2}: ${analiseJ2.streakOver}x). Momento quente!`, type: 'positive' });
-                              } else if (analiseJ1.streakUnder >= 3 && analiseJ2.streakUnder >= 3) {
-                                insights.push({ text: `Ambos em sequencia Under. Jogo tende a ser fechado.`, type: 'negative' });
-                              }
-
-                              if (analiseJ1.tendenciaGols === 'SUBINDO' && analiseJ2.tendenciaGols === 'SUBINDO') {
-                                insights.push({ text: 'Media de gols subindo para ambos. Momento favoravel.', type: 'positive' });
-                              } else if (analiseJ1.tendenciaGols === 'CAINDO' && analiseJ2.tendenciaGols === 'CAINDO') {
-                                insights.push({ text: 'Media de gols caindo para ambos. Cautela.', type: 'negative' });
-                              }
-
-                              if (analiseJ1.anomaliaPct >= 30 || analiseJ2.anomaliaPct >= 30) {
-                                const anomalo = analiseJ1.anomaliaPct >= 30 ? nomeJ1 : nomeJ2;
-                                const pctAn = analiseJ1.anomaliaPct >= 30 ? analiseJ1.anomaliaPct : analiseJ2.anomaliaPct;
-                                insights.push({ text: `${anomalo} com ${pctAn}% de anomalias — pode fugir do padrao.`, type: 'warning' });
-                              }
-
-                              if (analiseJ1.consistencia === 'BAIXA' && analiseJ2.consistencia === 'BAIXA') {
-                                insights.push({ text: 'Ambos imprevisiveis. Stake minima recomendada.', type: 'warning' });
-                              }
-
-                              return insights.map((insight, i) => (
-                                <div key={i} className="flex items-start gap-1.5">
-                                  <span className={cn('text-[9px] mt-0.5 shrink-0',
-                                    insight.type === 'positive' ? 'text-green-500' :
-                                    insight.type === 'negative' ? 'text-red-500' :
-                                    insight.type === 'warning' ? 'text-orange-500' : 'text-zinc-600'
-                                  )}>
-                                    {insight.type === 'positive' ? '▲' : insight.type === 'negative' ? '▼' : insight.type === 'warning' ? '!' : '—'}
-                                  </span>
-                                  <p className={cn('text-[10px]',
-                                    insight.type === 'positive' ? 'text-zinc-300' :
-                                    insight.type === 'negative' ? 'text-zinc-400' :
-                                    insight.type === 'warning' ? 'text-orange-300' : 'text-zinc-500'
-                                  )}>
-                                    {insight.text}
-                                  </p>
-                                </div>
-                              ));
-                            })()}
-                          </div>
-                        </div>
                       </div>
                     );
                   })()}
