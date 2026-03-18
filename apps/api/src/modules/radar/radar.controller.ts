@@ -44,4 +44,33 @@ export class RadarController {
   ) {
     return this.radarService.getAnaliseDetalhada(partidaId, contexto || 'HISTORICO');
   }
+
+  @Get('ultimos-resultados')
+  getUltimosResultados(@Query('limite') limite?: string) {
+    return this.radarService.getUltimosResultados(limite ? parseInt(limite) : 20);
+  }
+
+  @Get('ranking')
+  getRankingJogadores(@Query('limite') limite?: string) {
+    return this.radarService.getRankingJogadores(limite ? parseInt(limite) : 20);
+  }
+
+  @Get('stats-gerais')
+  getStatsGerais() {
+    return this.radarService.getStatsGerais();
+  }
+
+  @Get('confronto')
+  getConfrontoDireto(
+    @Query('jogador1') jogador1: string,
+    @Query('jogador2') jogador2: string,
+  ) {
+    if (!jogador1 || !jogador2) return { encontrado: false };
+    return this.radarService.getConfrontoDireto(jogador1, jogador2);
+  }
+
+  @Get('jogador/:id')
+  getJogadorCompleto(@Param('id') jogadorId: string) {
+    return this.radarService.getJogadorCompleto(jogadorId);
+  }
 }

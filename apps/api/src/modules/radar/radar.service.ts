@@ -1062,4 +1062,265 @@ export class RadarService {
       linhasSugeridas,
     };
   }
+
+  // ═══════════════════════════════════════════════════════════════════
+  // NOVOS ENDPOINTS — Pagina publica de analise eSoccer
+  // ═══════════════════════════════════════════════════════════════════
+
+  async getUltimosResultados(limite = 20): Promise<any[]> {
+    const partidas = await this.prisma.partida.findMany({
+      where: { status: StatusPartida.FINALIZADA, golsFT1: { not: null }, golsFT2: { not: null } },
+      include: { jogador1: true, jogador2: true },
+      orderBy: { dataHora: 'desc' },
+      take: limite,
+    });
+
+    return partidas.map(p => ({
+      id: p.id,
+      jogador1: { id: p.jogador1.id, nome: p.jogador1.nome },
+      jogador2: { id: p.jogador2.id, nome: p.jogador2.nome },
+      golsHome: p.golsFT1 ?? 0,
+      golsAway: p.golsFT2 ?? 0,
+      golsHTHome: p.golsHT1,
+      golsHTAway: p.golsHT2,
+      liga: p.liga,
+      dataHora: p.dataHora,
+    }));
+  }
+
+  async getRankingJogadores(limite = 20): Promise<any[]> {
+    const jogadores = await this.prisma.jogador.findMany({
+      where: { mediaGolsFT: { gt: 0 } },
+      orderBy: { mediaGolsFT: 'desc' },
+      take: 100,
+    });
+
+    const ranking = await Promise.all(
+      jogadores.map(async (j) => {
+        const totalPartidas = await this.prisma.partida.count({
+          where: {
+            OR: [{ jogador1Id: j.id }, { jogador2Id: j.id }],
+            status: StatusPartida.FINALIZADA,
+          },
+        });
+
+        return {
+          id: j.id,
+          nome: j.nome,
+          nickname: this.extractNickname(j.nome) || j.nome,
+          liga: j.liga,
+          mediaGolsFT: j.mediaGolsFT,
+          mediaGolsHT: j.mediaGolsHT,
+          percentualOver: j.percentualOver,
+          percentual0x0: j.percentual0x0,
+          totalPartidas,
+        };
+      })
+    );
+
+    return ranking
+      .filter(j => j.totalPartidas >= 5)
+      .sort((a, b) => b.mediaGolsFT - a.mediaGolsFT)
+      .slice(0, limite);
+  }
+
+  async getStatsGerais(): Promise<any> {
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    const partidasHoje = await this.prisma.partida.findMany({
+      where: {
+        status: StatusPartida.FINALIZADA,
+        dataHora: { gte: hoje },
+        golsFT1: { not: null },
+        golsFT2: { not: null },
+      },
+    });
+
+    const total = partidasHoje.length || 1;
+    let totalGols = 0;
+    let over25Count = 0;
+    let bttsCount = 0;
+
+    for (const p of partidasHoje) {
+      const ft = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+      totalGols += ft;
+      if (ft > 2) over25Count++;
+      if ((p.golsFT1 ?? 0) > 0 && (p.golsFT2 ?? 0) > 0) bttsCount++;
+    }
+
+    return {
+      totalPartidas: partidasHoje.length,
+      mediaGols: totalGols / total,
+      percentualOver25: (over25Count / total) * 100,
+      percentualBTTS: (bttsCount / total) * 100,
+    };
+  }
+
+  async getConfrontoDireto(jogador1Nome: string, jogador2Nome: string): Promise<any> {
+    // Buscar jogadores por nome (parcial, case insensitive)
+    const jogadores1 = await this.prisma.jogador.findMany({
+      where: { nome: { contains: jogador1Nome, mode: 'insensitive' } },
+      take: 5,
+    });
+    const jogadores2 = await this.prisma.jogador.findMany({
+      where: { nome: { contains: jogador2Nome, mode: 'insensitive' } },
+      take: 5,
+    });
+
+    if (jogadores1.length === 0 || jogadores2.length === 0) {
+      return { encontrado: false, jogador1: jogador1Nome, jogador2: jogador2Nome };
+    }
+
+    const ids1 = jogadores1.map(j => j.id);
+    const ids2 = jogadores2.map(j => j.id);
+
+    // Buscar confrontos diretos
+    const confrontos = await this.prisma.partida.findMany({
+      where: {
+        OR: [
+          { jogador1Id: { in: ids1 }, jogador2Id: { in: ids2 } },
+          { jogador1Id: { in: ids2 }, jogador2Id: { in: ids1 } },
+        ],
+        status: StatusPartida.FINALIZADA,
+      },
+      include: { jogador1: true, jogador2: true },
+      orderBy: { dataHora: 'desc' },
+      take: 20,
+    });
+
+    let vitoriasJ1 = 0, vitoriasJ2 = 0, empates = 0;
+    let totalGols = 0;
+
+    const partidas = confrontos.map(p => {
+      const j1IsHome = ids1.includes(p.jogador1Id);
+      const golsJ1 = j1IsHome ? (p.golsFT1 ?? 0) : (p.golsFT2 ?? 0);
+      const golsJ2 = j1IsHome ? (p.golsFT2 ?? 0) : (p.golsFT1 ?? 0);
+      const total = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+      totalGols += total;
+
+      if (golsJ1 > golsJ2) vitoriasJ1++;
+      else if (golsJ1 < golsJ2) vitoriasJ2++;
+      else empates++;
+
+      return {
+        id: p.id,
+        jogador1: j1IsHome ? p.jogador1.nome : p.jogador2.nome,
+        jogador2: j1IsHome ? p.jogador2.nome : p.jogador1.nome,
+        golsJ1,
+        golsJ2,
+        dataHora: p.dataHora,
+        liga: p.liga,
+      };
+    });
+
+    const count = confrontos.length || 1;
+
+    // Stats de cada jogador
+    const j1 = jogadores1[0];
+    const j2 = jogadores2[0];
+    const stats1 = await this.getJogadorStats(j1, j1.id, 'HISTORICO');
+    const stats2 = await this.getJogadorStats(j2, j2.id, 'HISTORICO');
+
+    // Previsao IA simples
+    const mediaTotal = stats1.mediaGolsFT + stats2.mediaGolsFT;
+    const overMedio = (stats1.percentualOver + stats2.percentualOver) / 2;
+    const bttsMedio = (stats1.percentualBTTS + stats2.percentualBTTS) / 2;
+
+    // Probabilidades baseadas no historico
+    const totalConf = confrontos.length || 1;
+    const probJ1 = confrontos.length >= 3 ? Math.round((vitoriasJ1 / totalConf) * 100) : Math.round(50 + (stats1.mediaGolsFT - stats2.mediaGolsFT) * 10);
+    const probJ2 = confrontos.length >= 3 ? Math.round((vitoriasJ2 / totalConf) * 100) : Math.round(50 + (stats2.mediaGolsFT - stats1.mediaGolsFT) * 10);
+    const probEmpate = 100 - Math.min(100, probJ1 + probJ2);
+
+    // Melhor mercado
+    let melhorMercado = 'Over 2.5 FT';
+    let confiancaMercado: 'Alta' | 'Media' | 'Baixa' = 'Media';
+    if (mediaTotal >= 6 && overMedio >= 65) { melhorMercado = 'Over 2.5 FT'; confiancaMercado = 'Alta'; }
+    else if (mediaTotal >= 5 && overMedio >= 55) { melhorMercado = 'Over 1.5 FT'; confiancaMercado = 'Alta'; }
+    else if (bttsMedio >= 60) { melhorMercado = 'BTTS Sim'; confiancaMercado = 'Media'; }
+    else if (mediaTotal < 3.5) { melhorMercado = 'Under 2.5 FT'; confiancaMercado = 'Media'; }
+
+    return {
+      encontrado: true,
+      jogador1: { nome: j1.nome, nickname: this.extractNickname(j1.nome) || j1.nome, id: j1.id },
+      jogador2: { nome: j2.nome, nickname: this.extractNickname(j2.nome) || j2.nome, id: j2.id },
+      confrontos: partidas,
+      totalConfrontos: confrontos.length,
+      vitoriasJ1,
+      vitoriasJ2,
+      empates,
+      mediaGols: totalGols / count,
+      stats1: {
+        mediaGolsFT: stats1.mediaGolsFT,
+        mediaGolsSofridos: stats1.mediaGolsSofridos,
+        percentualOver: stats1.percentualOver,
+        percentualBTTS: stats1.percentualBTTS,
+        sequencia: stats1.sequencia,
+        totalJogos: stats1.ultimasPartidas.length,
+        vitorias: stats1.ultimasPartidas.filter(p => p.resultado === 'V').length,
+        derrotas: stats1.ultimasPartidas.filter(p => p.resultado === 'D').length,
+      },
+      stats2: {
+        mediaGolsFT: stats2.mediaGolsFT,
+        mediaGolsSofridos: stats2.mediaGolsSofridos,
+        percentualOver: stats2.percentualOver,
+        percentualBTTS: stats2.percentualBTTS,
+        sequencia: stats2.sequencia,
+        totalJogos: stats2.ultimasPartidas.length,
+        vitorias: stats2.ultimasPartidas.filter(p => p.resultado === 'V').length,
+        derrotas: stats2.ultimasPartidas.filter(p => p.resultado === 'D').length,
+      },
+      previsao: {
+        probVitoriaJ1: Math.max(5, Math.min(90, probJ1)),
+        probEmpate: Math.max(5, Math.min(30, probEmpate)),
+        probVitoriaJ2: Math.max(5, Math.min(90, probJ2)),
+      },
+      melhorMercado: {
+        mercado: melhorMercado,
+        confianca: confiancaMercado,
+      },
+    };
+  }
+
+  async getJogadorCompleto(jogadorId: string): Promise<any> {
+    const jogador = await this.prisma.jogador.findUnique({
+      where: { id: jogadorId },
+    });
+
+    if (!jogador) return null;
+
+    const stats = await this.getJogadorStats(jogador, jogador.id, 'HISTORICO');
+    const totalJogos = stats.ultimasPartidas.length;
+    const vitorias = stats.ultimasPartidas.filter(p => p.resultado === 'V').length;
+    const derrotas = stats.ultimasPartidas.filter(p => p.resultado === 'D').length;
+    const empates = stats.ultimasPartidas.filter(p => p.resultado === 'E').length;
+
+    return {
+      id: jogador.id,
+      nome: jogador.nome,
+      nickname: this.extractNickname(jogador.nome) || jogador.nome,
+      liga: jogador.liga,
+      stats: {
+        totalJogos,
+        vitorias,
+        derrotas,
+        empates,
+        mediaGolsFT: stats.mediaGolsFT,
+        mediaGolsHT: stats.mediaGolsHT,
+        mediaGolsSofridos: stats.mediaGolsSofridos,
+        percentualOver: stats.percentualOver,
+        percentualBTTS: stats.percentualBTTS,
+        percentualOver05HT: stats.percentualOver05HT,
+        percentualOver15HT: stats.percentualOver15HT,
+        percentual0x0: stats.percentual0x0,
+        streakOver: stats.streakOver,
+        streakUnder: stats.streakUnder,
+        consistencia: stats.consistencia,
+        maiorGoleada: stats.maiorGoleada,
+      },
+      formaRecente: stats.sequencia,
+      ultimasPartidas: stats.ultimasPartidas.slice(0, 20),
+    };
+  }
 }

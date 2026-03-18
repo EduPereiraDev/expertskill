@@ -264,6 +264,21 @@ export const radarApi = {
 
   getLinhas: (liga?: Liga) =>
     api.get<RadarLinhasResponse>('/radar/linhas', { params: { liga } }),
+
+  getUltimosResultados: (limite = 20) =>
+    api.get<any[]>('/radar/ultimos-resultados', { params: { limite } }),
+
+  getRanking: (limite = 20) =>
+    api.get<any[]>('/radar/ranking', { params: { limite } }),
+
+  getStatsGerais: () =>
+    api.get<any>('/radar/stats-gerais'),
+
+  getConfrontoDireto: (jogador1: string, jogador2: string) =>
+    api.get<any>('/radar/confronto', { params: { jogador1, jogador2 } }),
+
+  getJogadorCompleto: (jogadorId: string) =>
+    api.get<any>(`/radar/jogador/${jogadorId}`),
 };
 
 export type NivelConfianca = 'BAIXA' | 'MEDIA' | 'ALTA';

@@ -16,7 +16,8 @@ import {
   X,
   ChevronDown,
   User,
-  BarChart3
+  BarChart3,
+  Activity
 } from 'lucide-react';
 import { useState } from 'react';
 import { NotificationsDropdown } from '@/components/notifications/notifications-dropdown';
@@ -30,8 +31,8 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   { name: 'Início', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'eSoccer', href: '/dashboard/esoccer', icon: Activity },
   { name: 'Banca', href: '/dashboard/banca', icon: Wallet },
-  { name: 'Análise Diária', href: '/dashboard/analise', icon: BarChart3, plan: 'PRO' },
   { name: 'Radar', href: '/dashboard/radar', icon: Radio, plan: 'PRO' },
   { name: 'Entradas', href: '/dashboard/entradas', icon: Zap, plan: 'EXPERT' },
   { name: 'Histórico', href: '/dashboard/historico', icon: History },
