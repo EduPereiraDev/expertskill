@@ -1124,6 +1124,59 @@ export class RadarService {
       .slice(0, limite);
   }
 
+  async getTermometro(horas: number = 24): Promise<any> {
+    const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
+    const partidas = await this.prisma.partida.findMany({
+      where: {
+        status: StatusPartida.FINALIZADA,
+        dataHora: { gte: desde },
+        golsFT1: { not: null },
+        golsFT2: { not: null },
+      },
+      include: { jogador1: true, jogador2: true },
+    });
+
+    const ligasAtivas: Liga[] = ['GT_12MIN', 'VOLTA_6MIN', 'GT_8MIN', 'H2H'];
+    const porLiga = ligasAtivas.map(liga => {
+      const jogos = partidas.filter(p => p.liga === liga);
+      if (jogos.length === 0) return null;
+      let totalGols = 0, over25 = 0, btts = 0;
+      for (const p of jogos) {
+        const ft = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+        totalGols += ft;
+        if (ft > 2) over25++;
+        if ((p.golsFT1 ?? 0) > 0 && (p.golsFT2 ?? 0) > 0) btts++;
+      }
+      const media = totalGols / jogos.length;
+      return {
+        liga,
+        jogos: jogos.length,
+        mediaGols: parseFloat(media.toFixed(1)),
+        over25Pct: parseFloat(((over25 / jogos.length) * 100).toFixed(0)),
+        bttsPct: parseFloat(((btts / jogos.length) * 100).toFixed(0)),
+      };
+    }).filter(Boolean);
+
+    // Geral
+    const total = partidas.length || 1;
+    let totalGols = 0, over25 = 0, btts = 0;
+    for (const p of partidas) {
+      const ft = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
+      totalGols += ft;
+      if (ft > 2) over25++;
+      if ((p.golsFT1 ?? 0) > 0 && (p.golsFT2 ?? 0) > 0) btts++;
+    }
+
+    return {
+      horas,
+      totalPartidas: partidas.length,
+      mediaGols: parseFloat((totalGols / total).toFixed(1)),
+      over25Pct: parseFloat(((over25 / total) * 100).toFixed(0)),
+      bttsPct: parseFloat(((btts / total) * 100).toFixed(0)),
+      porLiga,
+    };
+  }
+
   async getStatsGerais(): Promise<any> {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);

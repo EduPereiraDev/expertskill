@@ -55,6 +55,11 @@ export class RadarController {
     return this.radarService.getRankingJogadores(limite ? parseInt(limite) : 20);
   }
 
+  @Get('termometro')
+  getTermometro(@Query('horas') horas?: string) {
+    return this.radarService.getTermometro(horas ? parseInt(horas) : 24);
+  }
+
   @Get('stats-gerais')
   getStatsGerais() {
     return this.radarService.getStatsGerais();

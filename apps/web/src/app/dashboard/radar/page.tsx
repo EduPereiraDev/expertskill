@@ -52,6 +52,9 @@ export default function RadarPage() {
   const [scrollToJogadores, setScrollToJogadores] = useState(false);
   const [ligaExpandida, setLigaExpandida] = useState<string | null>(null);
   const [linhasPorLiga, setLinhasPorLiga] = useState<Record<string, { melhor: { linha: string; pagou: number; total: number; taxa: number } | null; pior: { linha: string; pagou: number; total: number; taxa: number } | null }>>({});
+  const [periodoTermometro, setPeriodoTermometro] = useState<number>(24);
+  const [termometroData, setTermometroData] = useState<any>(null);
+  const [loadingTermometro, setLoadingTermometro] = useState(false);
   const jogadoresRef = useRef<HTMLDivElement>(null);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
@@ -95,6 +98,15 @@ export default function RadarPage() {
     const next = !mostrarRadarLinhas;
     setMostrarRadarLinhas(next);
     if (next) fetchRadarLinhas(); // Sempre recarrega ao abrir
+  };
+
+  const fetchTermometro = async (horas: number) => {
+    setLoadingTermometro(true);
+    try {
+      const { data } = await radarApi.getTermometro(horas);
+      setTermometroData(data);
+    } catch { setTermometroData(null); }
+    finally { setLoadingTermometro(false); }
   };
 
   const toggleLigaExpandida = async (liga: string) => {
@@ -146,6 +158,12 @@ export default function RadarPage() {
     const interval = setInterval(fetchPartidas, 10000);
     return () => clearInterval(interval);
   }, [ligaSelecionada, isPro]);
+
+  // Termometro: fetch ao carregar e ao mudar periodo
+  useEffect(() => {
+    if (!isPro) return;
+    fetchTermometro(periodoTermometro);
+  }, [periodoTermometro, isPro]);
 
   // Radar de Linha: recarregar ao mudar liga + polling 15s quando aberto
   useEffect(() => {
@@ -648,31 +666,17 @@ export default function RadarPage() {
         </span>
       </div>
 
-      {/* Indicadores por Liga + Termometro */}
-      {partidas.length > 0 && (() => {
-        const ligasAtivas = ['GT_12MIN', 'VOLTA_6MIN', 'GT_8MIN', 'H2H'] as Liga[];
-        const ligaStats = ligasAtivas.map(liga => {
-          const jogos = partidas.filter(p => p.liga === liga);
-          if (jogos.length === 0) return null;
-          const mediaGols = jogos.reduce((s, p) => s + p.indicadores.mediaTotal, 0) / jogos.length;
-          const overMedio = jogos.reduce((s, p) => s + p.indicadores.overMedio, 0) / jogos.length;
-          const jogosFracos = jogos.filter(p => p.cenario === 'JOGO_FRACO').length;
-          const jogosBons = jogos.filter(p => p.cenario === 'MELHOR_JOGO').length;
-          const pctFracos = Math.round((jogosFracos / jogos.length) * 100);
-          const status = mediaGols >= 5 && pctFracos < 30 ? 'QUENTE'
-            : pctFracos >= 50 ? 'FRIO'
-            : 'MISTO';
-          return { liga, jogos: jogos.length, mediaGols, overMedio, jogosFracos, jogosBons, pctFracos, status };
-        }).filter(Boolean) as any[];
-
-        // Termometro geral
-        const totalJogos = partidas.length;
-        const mediaGeralGols = partidas.reduce((s, p) => s + p.indicadores.mediaTotal, 0) / totalJogos;
-        const pctOperar = Math.round((partidas.filter(p => p.classificacao === 'OPERAR').length / totalJogos) * 100);
-        const pctEvitar = Math.round((partidas.filter(p => p.classificacao === 'EVITAR').length / totalJogos) * 100);
-        const termometro = pctOperar >= 40 ? 'OPERAR' : pctEvitar >= 50 ? 'EVITAR' : 'CAUTELA';
-        const termometroLabel = termometro === 'OPERAR' ? 'Mercado Quente' : termometro === 'EVITAR' ? 'Grade Suja' : 'Mercado Misto';
-        const termometroPct = termometro === 'OPERAR' ? Math.min(100, pctOperar + 30) : termometro === 'EVITAR' ? Math.max(10, 100 - pctEvitar) : 50;
+      {/* Termometro do Mercado + Indicadores por Liga */}
+      {(() => {
+        // Dados do termometro (partidas finalizadas no periodo)
+        const td = termometroData;
+        const temDados = td && td.totalPartidas > 0;
+        const mediaGols = temDados ? td.mediaGols : 0;
+        const over25Pct = temDados ? td.over25Pct : 0;
+        const termometroStatus = over25Pct >= 55 ? 'OPERAR' : over25Pct <= 35 ? 'EVITAR' : 'CAUTELA';
+        const termometroLabel = termometroStatus === 'OPERAR' ? 'Mercado Quente' : termometroStatus === 'EVITAR' ? 'Grade Suja' : 'Mercado Misto';
+        const termometroPct = termometroStatus === 'OPERAR' ? Math.min(100, over25Pct + 20) : termometroStatus === 'EVITAR' ? Math.max(10, over25Pct) : 50;
+        const ligasDados = (td?.porLiga || []) as any[];
 
         return (
           <div className="space-y-3">
@@ -680,86 +684,129 @@ export default function RadarPage() {
             <div className="p-3 bg-zinc-900 rounded-lg border border-zinc-800">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-zinc-400">Termometro do Mercado</span>
-                <span className={cn('text-xs font-bold px-2 py-0.5 rounded',
-                  termometro === 'OPERAR' ? 'text-green-400 bg-green-500/10' :
-                  termometro === 'EVITAR' ? 'text-red-400 bg-red-500/10' :
-                  'text-yellow-400 bg-yellow-500/10'
-                )}>{termometroLabel}</span>
+                <div className="flex items-center gap-1.5">
+                  {loadingTermometro && <div className="h-3 w-3 animate-spin rounded-full border-2 border-purple-500 border-t-transparent" />}
+                  {temDados && (
+                    <span className={cn('text-xs font-bold px-2 py-0.5 rounded',
+                      termometroStatus === 'OPERAR' ? 'text-green-400 bg-green-500/10' :
+                      termometroStatus === 'EVITAR' ? 'text-red-400 bg-red-500/10' :
+                      'text-yellow-400 bg-yellow-500/10'
+                    )}>{termometroLabel}</span>
+                  )}
+                </div>
               </div>
-              <div className="h-2.5 bg-zinc-800 rounded-full overflow-hidden">
-                <div className={cn('h-full rounded-full transition-all',
-                  termometro === 'OPERAR' ? 'bg-gradient-to-r from-green-600 to-green-400' :
-                  termometro === 'EVITAR' ? 'bg-gradient-to-r from-red-600 to-red-400' :
-                  'bg-gradient-to-r from-yellow-600 to-yellow-400'
-                )} style={{ width: `${termometroPct}%` }} />
-              </div>
-              <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
-                <span>Evitar</span>
-                <span>Media {mediaGeralGols.toFixed(1)} gols | {pctOperar}% Operar | {pctEvitar}% Evitar</span>
-                <span>Operar</span>
-              </div>
-            </div>
 
-            {/* Indicadores por Liga */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {ligaStats.map(ls => {
-                const ligaLabel = ligas.find(l => l.value === ls.liga)?.label || ls.liga;
-                const isExpanded = ligaExpandida === ls.liga;
-                const linhasInfo = linhasPorLiga[ls.liga];
-                return (
-                  <div
-                    key={ls.liga}
-                    onClick={() => toggleLigaExpandida(ls.liga)}
+              {/* Filtro de periodo */}
+              <div className="flex items-center gap-1 mb-2">
+                {[
+                  { label: '4h', value: 4 },
+                  { label: '8h', value: 8 },
+                  { label: '12h', value: 12 },
+                  { label: '24h', value: 24 },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPeriodoTermometro(opt.value)}
                     className={cn(
-                      'p-2.5 bg-zinc-900 rounded-lg border cursor-pointer transition-all',
-                      isExpanded ? 'border-cyan-500/50 bg-zinc-900/80' : 'border-zinc-800 hover:border-zinc-700'
+                      'px-2.5 py-1 rounded text-[10px] font-medium transition-colors',
+                      periodoTermometro === opt.value
+                        ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
+                        : 'bg-zinc-800 text-zinc-500 border border-zinc-700 hover:border-zinc-600'
                     )}
                   >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[11px] font-medium text-zinc-300">{ligaLabel}</span>
-                      {ls.status === 'QUENTE' && <Flame className="h-3.5 w-3.5 text-orange-400" />}
-                      {ls.status === 'MISTO' && <ShieldAlert className="h-3.5 w-3.5 text-yellow-400" />}
-                      {ls.status === 'FRIO' && <Octagon className="h-3.5 w-3.5 text-red-400" />}
-                    </div>
-                    <div className="text-lg font-bold text-white">{ls.mediaGols.toFixed(1)}<span className="text-[10px] text-zinc-500 font-normal ml-0.5">gols</span></div>
-                    <div className="flex items-center gap-2 mt-0.5 text-[10px]">
-                      <span className="text-zinc-500">{ls.jogos}j</span>
-                      <span className={cn(ls.overMedio >= 65 ? 'text-green-400' : ls.overMedio >= 45 ? 'text-yellow-400' : 'text-red-400')}>
-                        {ls.overMedio.toFixed(0)}% Over
-                      </span>
-                    </div>
-                    {isExpanded && (
-                      <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
-                        {!linhasInfo ? (
-                          <div className="flex items-center justify-center py-1">
-                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
-                          </div>
-                        ) : (
-                          <>
-                            {linhasInfo.melhor && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-green-400 font-medium">Melhor</span>
-                                <span className="text-[10px] text-white font-bold">
-                                  {linhasInfo.melhor.linha} <span className="text-green-400">{linhasInfo.melhor.pagou}/{linhasInfo.melhor.total}</span>
-                                </span>
-                              </div>
-                            )}
-                            {linhasInfo.pior && (
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-red-400 font-medium">Pior</span>
-                                <span className="text-[10px] text-white font-bold">
-                                  {linhasInfo.pior.linha} <span className="text-red-400">{linhasInfo.pior.pagou}/{linhasInfo.pior.total}</span>
-                                </span>
-                              </div>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    )}
+                    {opt.label}
+                  </button>
+                ))}
+                {temDados && (
+                  <span className="text-[9px] text-zinc-600 ml-auto">{td.totalPartidas} partidas</span>
+                )}
+              </div>
+
+              {temDados ? (
+                <>
+                  <div className="h-2.5 bg-zinc-800 rounded-full overflow-hidden">
+                    <div className={cn('h-full rounded-full transition-all',
+                      termometroStatus === 'OPERAR' ? 'bg-gradient-to-r from-green-600 to-green-400' :
+                      termometroStatus === 'EVITAR' ? 'bg-gradient-to-r from-red-600 to-red-400' :
+                      'bg-gradient-to-r from-yellow-600 to-yellow-400'
+                    )} style={{ width: `${termometroPct}%` }} />
                   </div>
-                );
-              })}
+                  <div className="flex justify-between mt-1 text-[10px] text-zinc-600">
+                    <span>Evitar</span>
+                    <span>Media {mediaGols} gols | {over25Pct}% Over 2.5 | {td.bttsPct}% BTTS</span>
+                    <span>Operar</span>
+                  </div>
+                </>
+              ) : !loadingTermometro ? (
+                <p className="text-[10px] text-zinc-600 text-center py-1">Sem partidas finalizadas nas ultimas {periodoTermometro}h</p>
+              ) : null}
             </div>
+
+            {/* Indicadores por Liga (dados do termometro) */}
+            {ligasDados.length > 0 && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {ligasDados.map((ls: any) => {
+                  const ligaLabel = ligas.find(l => l.value === ls.liga)?.label || ls.liga;
+                  const isExpanded = ligaExpandida === ls.liga;
+                  const linhasInfo = linhasPorLiga[ls.liga];
+                  const status = ls.mediaGols >= 5 && ls.over25Pct >= 55 ? 'QUENTE'
+                    : ls.over25Pct <= 35 ? 'FRIO'
+                    : 'MISTO';
+                  return (
+                    <div
+                      key={ls.liga}
+                      onClick={() => toggleLigaExpandida(ls.liga)}
+                      className={cn(
+                        'p-2.5 bg-zinc-900 rounded-lg border cursor-pointer transition-all',
+                        isExpanded ? 'border-cyan-500/50 bg-zinc-900/80' : 'border-zinc-800 hover:border-zinc-700'
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[11px] font-medium text-zinc-300">{ligaLabel}</span>
+                        {status === 'QUENTE' && <Flame className="h-3.5 w-3.5 text-orange-400" />}
+                        {status === 'MISTO' && <ShieldAlert className="h-3.5 w-3.5 text-yellow-400" />}
+                        {status === 'FRIO' && <Octagon className="h-3.5 w-3.5 text-red-400" />}
+                      </div>
+                      <div className="text-lg font-bold text-white">{ls.mediaGols}<span className="text-[10px] text-zinc-500 font-normal ml-0.5">gols</span></div>
+                      <div className="flex items-center gap-2 mt-0.5 text-[10px]">
+                        <span className="text-zinc-500">{ls.jogos}j</span>
+                        <span className={cn(ls.over25Pct >= 55 ? 'text-green-400' : ls.over25Pct >= 40 ? 'text-yellow-400' : 'text-red-400')}>
+                          {ls.over25Pct}% Over
+                        </span>
+                      </div>
+                      {isExpanded && (
+                        <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
+                          {!linhasInfo ? (
+                            <div className="flex items-center justify-center py-1">
+                              <div className="h-3 w-3 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                            </div>
+                          ) : (
+                            <>
+                              {linhasInfo.melhor && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] text-green-400 font-medium">Melhor</span>
+                                  <span className="text-[10px] text-white font-bold">
+                                    {linhasInfo.melhor.linha} <span className="text-green-400">{linhasInfo.melhor.pagou}/{linhasInfo.melhor.total}</span>
+                                  </span>
+                                </div>
+                              )}
+                              {linhasInfo.pior && (
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[9px] text-red-400 font-medium">Pior</span>
+                                  <span className="text-[10px] text-white font-bold">
+                                    {linhasInfo.pior.linha} <span className="text-red-400">{linhasInfo.pior.pagou}/{linhasInfo.pior.total}</span>
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
           </div>
         );
