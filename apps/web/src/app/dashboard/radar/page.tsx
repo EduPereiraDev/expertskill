@@ -50,6 +50,8 @@ export default function RadarPage() {
   const [mostrarSeletorLinhas, setMostrarSeletorLinhas] = useState(false);
   const [linhasAbertasCard, setLinhasAbertasCard] = useState<Record<string, boolean>>({});
   const [scrollToJogadores, setScrollToJogadores] = useState(false);
+  const [ligaExpandida, setLigaExpandida] = useState<string | null>(null);
+  const [linhasPorLiga, setLinhasPorLiga] = useState<Record<string, { melhor: { linha: string; pagou: number; total: number; taxa: number } | null; pior: { linha: string; pagou: number; total: number; taxa: number } | null }>>({});
   const jogadoresRef = useRef<HTMLDivElement>(null);
 
   const isPro = user?.plan === 'PRO' || user?.plan === 'EXPERT';
@@ -93,6 +95,24 @@ export default function RadarPage() {
     const next = !mostrarRadarLinhas;
     setMostrarRadarLinhas(next);
     if (next) fetchRadarLinhas(); // Sempre recarrega ao abrir
+  };
+
+  const toggleLigaExpandida = async (liga: string) => {
+    if (ligaExpandida === liga) { setLigaExpandida(null); return; }
+    setLigaExpandida(liga);
+    if (linhasPorLiga[liga]) return; // ja tem cache
+    try {
+      const { data } = await radarApi.getLinhas(liga as Liga);
+      const linhas = data.linhas || [];
+      // Filtrar linhas com total > 0 e ordenar por taxa
+      const validas = linhas.filter((l: any) => l.total > 0);
+      const ordenadas = [...validas].sort((a: any, b: any) => b.taxa - a.taxa);
+      const melhor = ordenadas.length > 0 ? ordenadas[0] : null;
+      const pior = ordenadas.length > 0 ? ordenadas[ordenadas.length - 1] : null;
+      setLinhasPorLiga(prev => ({ ...prev, [liga]: { melhor, pior } }));
+    } catch {
+      setLinhasPorLiga(prev => ({ ...prev, [liga]: { melhor: null, pior: null } }));
+    }
   };
 
   useEffect(() => {
@@ -684,8 +704,17 @@ export default function RadarPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {ligaStats.map(ls => {
                 const ligaLabel = ligas.find(l => l.value === ls.liga)?.label || ls.liga;
+                const isExpanded = ligaExpandida === ls.liga;
+                const linhasInfo = linhasPorLiga[ls.liga];
                 return (
-                  <div key={ls.liga} className="p-2.5 bg-zinc-900 rounded-lg border border-zinc-800">
+                  <div
+                    key={ls.liga}
+                    onClick={() => toggleLigaExpandida(ls.liga)}
+                    className={cn(
+                      'p-2.5 bg-zinc-900 rounded-lg border cursor-pointer transition-all',
+                      isExpanded ? 'border-cyan-500/50 bg-zinc-900/80' : 'border-zinc-800 hover:border-zinc-700'
+                    )}
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px] font-medium text-zinc-300">{ligaLabel}</span>
                       {ls.status === 'QUENTE' && <Flame className="h-3.5 w-3.5 text-orange-400" />}
@@ -699,6 +728,34 @@ export default function RadarPage() {
                         {ls.overMedio.toFixed(0)}% Over
                       </span>
                     </div>
+                    {isExpanded && (
+                      <div className="mt-2 pt-2 border-t border-zinc-800 space-y-1.5">
+                        {!linhasInfo ? (
+                          <div className="flex items-center justify-center py-1">
+                            <div className="h-3 w-3 animate-spin rounded-full border-2 border-cyan-500 border-t-transparent" />
+                          </div>
+                        ) : (
+                          <>
+                            {linhasInfo.melhor && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] text-green-400 font-medium">Melhor</span>
+                                <span className="text-[10px] text-white font-bold">
+                                  {linhasInfo.melhor.linha} <span className="text-green-400">{linhasInfo.melhor.pagou}/{linhasInfo.melhor.total}</span>
+                                </span>
+                              </div>
+                            )}
+                            {linhasInfo.pior && (
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] text-red-400 font-medium">Pior</span>
+                                <span className="text-[10px] text-white font-bold">
+                                  {linhasInfo.pior.linha} <span className="text-red-400">{linhasInfo.pior.pagou}/{linhasInfo.pior.total}</span>
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
