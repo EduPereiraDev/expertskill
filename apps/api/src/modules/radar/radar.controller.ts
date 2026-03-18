@@ -56,8 +56,8 @@ export class RadarController {
   }
 
   @Get('termometro')
-  getTermometro(@Query('horas') horas?: string) {
-    return this.radarService.getTermometro(horas ? parseInt(horas) : 24);
+  getTermometro() {
+    return this.radarService.getTermometro();
   }
 
   @Get('stats-gerais')

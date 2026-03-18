@@ -271,8 +271,8 @@ export const radarApi = {
   getRanking: (limite = 20) =>
     api.get<any[]>('/radar/ranking', { params: { limite } }),
 
-  getTermometro: (horas = 24) =>
-    api.get<any>('/radar/termometro', { params: { horas } }),
+  getTermometro: () =>
+    api.get<any>('/radar/termometro'),
 
   getStatsGerais: () =>
     api.get<any>('/radar/stats-gerais'),

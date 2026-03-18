@@ -1124,57 +1124,47 @@ export class RadarService {
       .slice(0, limite);
   }
 
-  async getTermometro(horas: number = 24): Promise<any> {
-    const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
-    const partidas = await this.prisma.partida.findMany({
+  async getTermometro(): Promise<any> {
+    const agora = Date.now();
+    const desde24h = new Date(agora - 24 * 60 * 60 * 1000);
+    const todasPartidas = await this.prisma.partida.findMany({
       where: {
         status: StatusPartida.FINALIZADA,
-        dataHora: { gte: desde },
+        dataHora: { gte: desde24h },
         golsFT1: { not: null },
         golsFT2: { not: null },
       },
-      include: { jogador1: true, jogador2: true },
     });
 
-    const ligasAtivas: Liga[] = ['GT_12MIN', 'VOLTA_6MIN', 'GT_8MIN', 'H2H'];
-    const porLiga = ligasAtivas.map(liga => {
-      const jogos = partidas.filter(p => p.liga === liga);
-      if (jogos.length === 0) return null;
+    const calcStats = (partidas: typeof todasPartidas) => {
+      const total = partidas.length || 1;
       let totalGols = 0, over25 = 0, btts = 0;
-      for (const p of jogos) {
+      for (const p of partidas) {
         const ft = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
         totalGols += ft;
         if (ft > 2) over25++;
         if ((p.golsFT1 ?? 0) > 0 && (p.golsFT2 ?? 0) > 0) btts++;
       }
-      const media = totalGols / jogos.length;
+      const media = totalGols / total;
+      const over25Pct = (over25 / total) * 100;
+      const status = over25Pct >= 55 ? 'OPERAR' : over25Pct <= 35 ? 'EVITAR' : 'CAUTELA';
       return {
-        liga,
-        jogos: jogos.length,
+        totalPartidas: partidas.length,
         mediaGols: parseFloat(media.toFixed(1)),
-        over25Pct: parseFloat(((over25 / jogos.length) * 100).toFixed(0)),
-        bttsPct: parseFloat(((btts / jogos.length) * 100).toFixed(0)),
+        over25Pct: parseFloat(over25Pct.toFixed(0)),
+        bttsPct: parseFloat(((btts / total) * 100).toFixed(0)),
+        status,
       };
-    }).filter(Boolean);
-
-    // Geral
-    const total = partidas.length || 1;
-    let totalGols = 0, over25 = 0, btts = 0;
-    for (const p of partidas) {
-      const ft = (p.golsFT1 ?? 0) + (p.golsFT2 ?? 0);
-      totalGols += ft;
-      if (ft > 2) over25++;
-      if ((p.golsFT1 ?? 0) > 0 && (p.golsFT2 ?? 0) > 0) btts++;
-    }
-
-    return {
-      horas,
-      totalPartidas: partidas.length,
-      mediaGols: parseFloat((totalGols / total).toFixed(1)),
-      over25Pct: parseFloat(((over25 / total) * 100).toFixed(0)),
-      bttsPct: parseFloat(((btts / total) * 100).toFixed(0)),
-      porLiga,
     };
+
+    const periodos = [24, 12, 8, 4];
+    const resultado = periodos.map(horas => {
+      const desde = new Date(agora - horas * 60 * 60 * 1000);
+      const filtradas = todasPartidas.filter(p => p.dataHora >= desde);
+      return { horas, ...calcStats(filtradas) };
+    });
+
+    return { periodos: resultado };
   }
 
   async getStatsGerais(): Promise<any> {
